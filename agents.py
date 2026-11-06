@@ -1,4 +1,5 @@
-"""出海罗盘 · Agent 模块（阶段 1：仅实现市场洞察，其余三个占位）"""
+"""出海罗盘 · Agent 模块（3B：四个 Agent 全部实现）"""
+import json
 import os
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def call_llm(system: str, user: str) -> str:
+def call_llm(system: str, user: str, temperature: float = 0.3) -> str:
     """调用大模型：system 为角色与规则，user 为具体内容；异常原样抛出，由路由层转为错误响应"""
     model = os.getenv("MODEL")
     if not model:
@@ -39,7 +40,7 @@ def call_llm(system: str, user: str) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        temperature=0.3,
+        temperature=temperature,
     )
     text = resp.choices[0].message.content
     if not text or not text.strip():
@@ -77,23 +78,109 @@ def build_info_text(info: dict) -> str:
     return "\n".join(lines)
 
 
+# ---------- Agent 1 · 市场洞察 ----------
 def market_insight(info: dict) -> str:
-    """Agent 1 · 市场洞察：输入产品信息，输出六小节洞察文本"""
+    """输入产品信息，输出六小节洞察文本"""
     system = load_prompt("insight")
     user = build_info_text(info)
     return call_llm(system, user)
 
 
+# ---------- Agent 2 · 多语种 Listing ----------
 def localize_listing(info: dict, insight: str) -> str:
-    """Agent 2 · 多语种 Listing：阶段 2 实现"""
-    raise NotImplementedError("localize_listing 将在阶段 2 实现")
+    """根据产品信息与市场洞察，为每种目标语言生成 Listing 文案"""
+    system = load_prompt("listing")
+    user = build_info_text(info) + "\n\n===== 市场洞察 =====\n" + insight
+    return call_llm(system, user)
 
 
+# ---------- Agent 3 · 合规体检 ----------
 def compliance_check(info: dict, listing: str) -> tuple[list, str]:
-    """Agent 3 · 合规体检：阶段 2 实现，返回 (rows, raw)"""
-    raise NotImplementedError("compliance_check 将在阶段 2 实现")
+    """对产品与 Listing 做合规体检，返回 (rows, raw)；JSON 解析失败不抛异常"""
+    system = load_prompt("compliance")
+    user = build_info_text(info) + "\n\n===== Listing 文案 =====\n" + listing
+    raw = call_llm(system, user)
+    rows = _parse_compliance_rows(raw)
+    return rows, raw
 
 
+def _strip_code_fence(text: str) -> str:
+    """去掉 ``` 包裹（```json ... ``` 或 ``` ... ```）"""
+    text = text.strip()
+    if not text.startswith("```"):
+        return text
+    lines = text.split("\n")
+    if len(lines) >= 2 and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1])
+    return "\n".join(lines[1:])
+
+
+def _extract_brackets(text: str) -> str:
+    """截取首个 [ 到最后一个 ] 之间的内容（应对模型输出前后带说明文字）"""
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        return ""
+    return text[start:end + 1]
+
+
+def _fix_row(row: dict) -> dict:
+    """逐条修补：risk_level 缺/非法→黄，need_verify 缺/非法→是，其余缺→空串；条目一律保留"""
+    level = str(row.get("risk_level", "")).strip()
+    if level not in ("红", "黄", "绿"):
+        level = "黄"
+    verify = str(row.get("need_verify", "")).strip()
+    if verify not in ("是", "否"):
+        verify = "是"
+    return {
+        "item": str(row.get("item", "")).strip(),
+        "risk_level": level,
+        "basis": str(row.get("basis", "")).strip(),
+        "action": str(row.get("action", "")).strip(),
+        "need_verify": verify,
+    }
+
+
+def _parse_compliance_rows(raw: str) -> list:
+    """JSON 四级容错：直解析 → 去``` → 截取[] → 单对象包列表；全失败返回 []，不抛异常"""
+    candidates = [raw.strip(), _strip_code_fence(raw), _extract_brackets(raw)]
+    for text in candidates:
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(data, list):
+            return [_fix_row(r) for r in data if isinstance(r, dict)]
+        if isinstance(data, dict):
+            return [_fix_row(data)]
+    return []
+
+
+# ---------- Agent 4 · 交叉质检 ----------
 def quality_check(info: dict, insight: str, listing: str, rows: list) -> str:
-    """Agent 4 · 交叉质检：阶段 2 实现"""
-    raise NotImplementedError("quality_check 将在阶段 2 实现")
+    """独立交叉审核：核对前三份结果的一致性；temperature=0.2 求稳"""
+    system = load_prompt("quality")
+    user = (
+        build_info_text(info)
+        + "\n\n===== 市场洞察 =====\n" + insight
+        + "\n\n===== Listing 文案 =====\n" + listing
+        + "\n\n===== 合规体检（摘要）=====\n" + _format_rows_brief(rows)
+    )
+    return call_llm(system, user, temperature=0.2)
+
+
+def _format_rows_brief(rows: list) -> str:
+    """合规行摘要：只给 item + risk_level，末尾附红项 action 原文（质检要判断红项是否有可执行改法）"""
+    if not rows:
+        return "合规结果为空或解析失败，无法交叉校验风险项；请在结论中说明此项未能校验"
+    lines = []
+    for r in rows:
+        lines.append("- " + str(r.get("item", "")) + "｜" + str(r.get("risk_level", "")))
+    red_actions = [str(r.get("action", "")).strip() for r in rows
+                   if r.get("risk_level") == "红" and str(r.get("action", "")).strip()]
+    if red_actions:
+        lines.append("")
+        lines.append("红项整改建议原文：")
+        for a in red_actions:
+            lines.append("- " + a)
+    return "\n".join(lines)

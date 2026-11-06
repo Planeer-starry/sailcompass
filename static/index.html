@@ -113,7 +113,7 @@
         <p class="text-slate-500 mt-1">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</p>
       </header>
 
-      <!-- 生成进度：本轮只有第一段会点亮，后三段 3B 接入 -->
+      <!-- 生成进度：四段依次点亮；连续 60 秒无进展时显示慢提示 -->
       <div class="flex flex-wrap items-center gap-2 mb-3 text-sm">
         <span id="stage-1" class="stage stage-todo">○ 市场洞察</span>
         <span class="text-slate-300">→</span>
@@ -122,7 +122,7 @@
         <span id="stage-3" class="stage stage-todo">○ 合规体检</span>
         <span class="text-slate-300">→</span>
         <span id="stage-4" class="stage stage-todo">○ 交叉质检</span>
-        <span class="text-xs text-[#94A3B8] ml-2">当前为 3A 阶段，后三段将在下一步接入</span>
+        <span id="slow-tip" class="hidden text-xs text-[#94A3B8] ml-2">生成较慢，请稍候</span>
       </div>
 
       <!-- 错误条：生成失败/超时时显示，带重试按钮 -->
@@ -139,89 +139,48 @@
         <button class="tab-btn" data-tab="quality" onclick="switchTab('quality')">质检</button>
       </nav>
 
-      <!-- 面板 1 · 市场洞察：六小节结构与 prompts/insight.md 输出一致 -->
+      <!-- 面板 1 · 市场洞察 -->
       <section id="panel-insight" class="tab-panel">
-        <div id="insight-content" class="insight-md bg-white border border-line rounded-2xl card-shadow p-6">
-          <h4 class="font-bold text-brand mt-4 mb-2">目标市场判断</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>保温杯属高频刚需品类，北美与欧洲站全年稳定需求，秋冬为旺季</li><li>316 不锈钢内胆属中高端配置，适合走"品质升级"路线而非低价走量</li><li>东南亚站该品类价格敏感，与 316 内胆定位不匹配，建议优先欧美</li><li>Amazon 美国站竞争最充分，新卖家可考虑从欧洲站或独立站切细分人群</li></ul>
-          <h4 class="font-bold text-brand mt-4 mb-2">目标人群与使用场景</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>都市白领通勤族：关注颜值与保温时长，愿为品质付溢价</li><li>户外与自驾人群：看重耐用性与容量，是带茶隔设计的潜在买家</li><li>学生家长群体：注重材质安全，316 不锈钢是有效卖点</li><li>典型场景：早晨装咖啡通勤、午后泡茶、周末自驾出行</li></ul>
-          <h4 class="font-bold text-brand mt-4 mb-2">价格与竞争格局（仅定性）</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>该品类头部品牌集中度高，新卖家正面竞争压力大</li><li>316 内胆 + 茶隔配置处于中高价位段，与头部品牌主力价位段重叠</li><li>低价位段由白牌卖家占据，利润薄且易陷入价格战，不建议跟进</li><li>差异化空间在细分人群（如茶饮场景）与外观设计，而非继续卷参数</li></ul>
-          <h4 class="font-bold text-brand mt-4 mb-2">本地化要点</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>英文站标题突出 316 不锈钢与 12 小时保温，核心卖点前置</li><li>西语市场需本地化标题与描述，直接机翻会损失信任感</li><li>欧洲站文案建议体现环保与可回收理念，回收标识要清晰</li><li>图片场景建议：通勤办公与户外自驾两组，覆盖两类人群</li></ul>
-          <h4 class="font-bold text-brand mt-4 mb-2">合规初筛</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>食品接触材料认证是硬门槛：美国站需 FDA，欧洲站需 LFGB</li><li>"12 小时保温"属性能宣称，需第三方检测报告支撑，否则有下架风险</li><li>带茶隔属可拆卸小部件，需评估儿童误吞风险与警示标签</li><li>316 不锈钢材质本身合规基础良好，是认证通过的加分项</li></ul>
-          <h4 class="font-bold text-brand mt-4 mb-2">待人工核实清单</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>是否已取得 FDA / LFGB 食品接触材料检测报告，覆盖哪个市场</li><li>"12 小时保温"有无第三方实测数据，实测条件（室温、水量）是什么</li><li>茶隔部件是否做过多部件测试，是否需要加儿童警示标签</li><li>若首发欧洲站，包装回收标识是否已按目标国要求就绪</li></ul>
+        <div id="insight-content" class="md-body bg-white border border-line rounded-2xl card-shadow p-6">
+          <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示市场洞察结果。</p>
         </div>
-        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：数据来源、检索时间、原文摘录与置信度说明。（当前为界面演示占位，无真实数据）</p></details>
-        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="demoAction()">⬇️ 导出</button></div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-insight" class="evidence-pre">（生成后显示原文）</pre></details>
+        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('insight')">⬇️ 导出</button></div>
       </section>
 
-      <!-- 面板 2 · 多语种 Listing：English + Español -->
+      <!-- 面板 2 · 多语种 Listing -->
       <section id="panel-listing" class="tab-panel">
-        <div class="bg-white border border-line rounded-2xl card-shadow p-6 mb-4">
-          <h4 class="text-lg font-bold text-brand mb-3">English</h4>
-          <p class="text-sm text-slate-500">Title</p>
-          <p class="font-medium mb-3">Insulated Thermos Bottle — 316 Stainless Steel Interior, 12-Hour Heat Retention, Removable Tea Infuser, Leak-Proof Lid for Commute, Office &amp; Outdoor</p>
-          <p class="text-sm text-slate-500">Bullet Points</p>
-          <ul class="list-disc pl-6 space-y-1 mb-3"><li>316 STAINLESS STEEL INTERIOR — higher corrosion resistance than common 304, safer for daily drinks</li><li>12-HOUR HEAT RETENTION — keeps coffee hot from morning commute to lunch (per standard lab test)</li><li>REMOVABLE TEA INFUSER — brew loose-leaf tea anywhere; detaches in seconds for easy cleaning</li><li>LEAK-PROOF SCREW LID — toss it in your bag with confidence, no drips on your laptop</li><li>SWEAT-FREE EXTERIOR — powder-coated body stays dry and comfortable to hold</li></ul>
-          <p class="text-sm text-slate-500">Product Description</p>
-          <p class="leading-relaxed">Built for people who take their drinks seriously. The 316 stainless steel interior resists corrosion and keeps flavors clean, while double-wall vacuum insulation holds heat for up to 12 hours under standard test conditions. A removable tea infuser turns the thermos into a travel teapot. From morning coffee on the train to weekend road trips, the leak-proof lid and sweat-free exterior make it the bottle you will actually use every day.</p>
+        <div id="listing-content" class="md-body bg-white border border-line rounded-2xl card-shadow p-6">
+          <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示各目标语言的 Listing 文案。</p>
         </div>
-        <div class="bg-white border border-line rounded-2xl card-shadow p-6">
-          <h4 class="text-lg font-bold text-brand mb-3">Español</h4>
-          <p class="text-sm text-slate-500">Title</p>
-          <p class="font-medium mb-3">Termo de Acero Inoxidable 316 — Conserva el Calor 12 Horas, Infusor de Té Removible, Tapa Antiderrames para Oficina, Viajes y Aire Libre</p>
-          <p class="text-sm text-slate-500">Bullet Points</p>
-          <ul class="list-disc pl-6 space-y-1 mb-3"><li>INTERIOR DE ACERO INOXIDABLE 316 — mayor resistencia a la corrosión que el acero 304 común</li><li>CONSERVA EL CALOR 12 HORAS — el café sigue caliente del desayuno al almuerzo (según prueba de laboratorio estándar)</li><li>INFUSOR DE TÉ REMOVIBLE — prepara té en hoja donde quieras; se desmonta en segundos</li><li>TAPA ANTIDERRAMES ROSCADA — mételo en la mochila sin preocupaciones, sin goteos</li><li>EXTERIOR SIN CONDENSACIÓN — el revestimiento se mantiene seco y cómodo en la mano</li></ul>
-          <p class="text-sm text-slate-500">Product Description</p>
-          <p class="leading-relaxed">Diseñado para quienes se toman en serio sus bebidas. El interior de acero inoxidable 316 resiste la corrosión y mantiene el sabor limpio, mientras el aislamiento al vacío de doble pared conserva el calor hasta 12 horas en condiciones de prueba estándar. El infusor de té removible convierte el termo en una tetera de viaje: del café de la mañana al té de la tarde, sin derrames y con el exterior siempre seco.</p>
-        </div>
-        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：数据来源、检索时间、原文摘录与置信度说明。（当前为界面演示占位，无真实数据）</p></details>
-        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="demoAction()">⬇️ 导出</button></div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-listing" class="evidence-pre">（生成后显示原文）</pre></details>
+        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('listing')">⬇️ 导出</button></div>
       </section>
 
       <!-- 面板 3 · 合规体检：表格 + 人工复核 -->
       <section id="panel-compliance" class="tab-panel">
-        <div class="overflow-x-auto rounded-2xl border border-line bg-white card-shadow">
-          <table class="compliance w-full text-sm border-collapse">
-            <colgroup><col style="width:25%"><col style="width:10%"><col style="width:30%"><col style="width:25%"><col style="width:10%"></colgroup>
-            <thead><tr><th>风险项</th><th>风险等级</th><th>依据</th><th>整改建议</th><th>需人工核实</th></tr></thead>
-            <tbody>
-              <tr><td>食品接触材料缺认证</td><td><span class="tag tag-red">红</span></td><td>美国站 FDA、欧洲站 LFGB 为食品接触类强制要求</td><td>送检取得报告后再上架，首发先锁定单一市场</td><td>是</td></tr>
-              <tr><td>"12 小时保温"宣称无检测支撑</td><td><span class="tag tag-red">红</span></td><td>性能宣称无依据可被平台下架或处罚</td><td>委托第三方按标准条件实测并留存报告</td><td>是</td></tr>
-              <tr><td>茶隔小部件有儿童误吞风险</td><td><span class="tag tag-yellow">黄</span></td><td>可拆卸小部件需评估窒息风险</td><td>加装警示标签与适用年龄说明</td><td>是</td></tr>
-              <tr><td>欧洲站包装回收标识未就绪</td><td><span class="tag tag-yellow">黄</span></td><td>欧盟包装指令要求包装印制回收标识</td><td>按目标国要求印制，核对包装供应商工艺</td><td>否</td></tr>
-              <tr><td>316 不锈钢材质合规基础良好</td><td><span class="tag tag-green">绿</span></td><td>316 属食品级常用材质，耐腐蚀性优于 304</td><td>保留材质检测凭证，作为 Listing 卖点展示</td><td>否</td></tr>
-            </tbody>
-          </table>
+        <div id="compliance-content">
+          <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示合规风险清单。</p>
         </div>
         <!-- 人工复核区：勾选 → 可标记 → 标记后导出启用 -->
         <div class="mt-6 p-4 bg-page border border-line rounded-lg">
           <label class="flex items-start gap-2"><input id="review-check" type="checkbox" class="mt-1" onchange="onReviewCheck()"><span>我已逐条复核上述风险项，确认可以交付</span></label>
           <div class="flex flex-wrap gap-3 mt-4">
             <button id="btn-mark" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="markReviewed()">标记为已审核</button>
-            <button id="btn-export-compliance" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="demoAction()">⬇️ 导出</button>
+            <button id="btn-export-compliance" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="exportTab('compliance')">⬇️ 导出</button>
           </div>
           <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
         </div>
-        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：法规条款原文、适用市场、检索时间。（当前为界面演示占位，无真实数据）</p></details>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-compliance" class="evidence-pre">（生成后显示模型原文）</pre></details>
       </section>
 
       <!-- 面板 4 · 质检：三段固定结构 -->
       <section id="panel-quality" class="tab-panel">
-        <div class="bg-white border border-line rounded-2xl card-shadow p-6">
-          <h4 class="font-bold text-brand mt-4 mb-2">检查结论</h4>
-          <p class="leading-relaxed">四份结果交叉核对完成。市场洞察与 Listing 的卖点口径一致（316 内胆、12 小时保温、茶隔），合规体检已识别 2 红 2 黄 1 绿共 5 项风险，整体结论可用；建议完成"待人工核实清单"后再进入上架流程。</p>
-          <h4 class="font-bold text-brand mt-4 mb-2">发现的问题</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>Listing 英文标题把"12-Hour"放在核心位置，但合规体检指出该宣称尚无第三方检测支撑，文案先行存在下架风险</li><li>市场洞察建议优先欧洲站，而合规初筛显示 LFGB 认证未取得，两处结论尚未对齐</li><li>西语版描述存在直译痕迹，个别表述可再本地化打磨</li></ul>
-          <h4 class="font-bold text-brand mt-4 mb-2">改进建议</h4>
-          <ul class="list-disc pl-6 space-y-1"><li>先补齐保温实测报告再保留"12 小时"宣称，否则统一改为"长效保温"</li><li>确定首发站点后，把洞察、Listing、合规三处的市场指向对齐</li><li>西语文案建议由母语者复核一遍后再发布</li></ul>
+        <div id="quality-content" class="md-body bg-white border border-line rounded-2xl card-shadow p-6">
+          <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示交叉质检结果。</p>
         </div>
-        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：交叉核对所引用的各 Agent 原文位置。（当前为界面演示占位，无真实数据）</p></details>
-        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="demoAction()">⬇️ 导出</button></div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-quality" class="evidence-pre">（生成后显示原文）</pre></details>
+        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('quality')">⬇️ 导出</button></div>
       </section>
 
       <footer class="text-slate-400 text-sm mt-10 text-center">请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。</footer>

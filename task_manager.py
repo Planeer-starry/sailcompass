@@ -36,6 +36,13 @@ def update_task(task_id: str, **kwargs) -> None:
         task.update(kwargs)
 
 
+def append_result(task_id: str, **kwargs) -> None:
+    """向任务 result 合并字段（四段流水线累积结果，失败时已完成段保留）"""
+    task = TASKS.get(task_id)
+    if task is not None:
+        task["result"].update(kwargs)
+
+
 def cleanup() -> None:
     """任务数超过上限时，按创建时间删掉最老的"""
     if len(TASKS) <= MAX_TASKS:

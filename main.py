@@ -1,4 +1,4 @@
-"""出海罗盘 SailCompass · 应用入口（阶段 3A：异步任务 + 轮询，只跑市场洞察）"""
+"""出海罗盘 SailCompass · 应用入口（3B：异步任务 + 轮询，四段流水线全通）"""
 from pathlib import Path
 
 import uvicorn
@@ -74,14 +74,31 @@ def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
 
 
 def _run_pipeline(task_id: str, info: dict) -> None:
-    """后台流水线：整体 try/except，异常写入任务，不静默"""
+    """后台四段流水线：任一段失败即停并记 error，已完成结果保留"""
     try:
+        # 第 1 段：市场洞察
         task_manager.update_task(task_id, stage="insight", progress=1)
-        text = agents.market_insight(info)
-        task_manager.update_task(task_id, result={"insight": text}, status="done")
+        insight = agents.market_insight(info)
+        task_manager.append_result(task_id, insight=insight)
+
+        # 第 2 段：多语种 Listing
+        task_manager.update_task(task_id, stage="listing", progress=2)
+        listing = agents.localize_listing(info, insight)
+        task_manager.append_result(task_id, listing=listing)
+
+        # 第 3 段：合规体检（rows 结构化 + raw 原文留证）
+        task_manager.update_task(task_id, stage="compliance", progress=3)
+        rows, raw = agents.compliance_check(info, listing)
+        task_manager.append_result(task_id, compliance=rows, compliance_raw=raw)
+
+        # 第 4 段：交叉质检
+        task_manager.update_task(task_id, stage="quality", progress=4)
+        quality = agents.quality_check(info, insight, listing, rows)
+        task_manager.append_result(task_id, quality=quality)
+
+        task_manager.update_task(task_id, status="done", stage="")
     except Exception as e:
         task_manager.update_task(task_id, status="failed", error=str(e))
-    # 3B 阶段在此续接：localize_listing → compliance_check → quality_check
 
 
 @app.get("/api/task/{task_id}")

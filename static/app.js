@@ -1,4 +1,4 @@
-/* 出海罗盘 · 交互脚本（阶段 3A：异步任务 + 轮询，只接市场洞察） */
+/* 出海罗盘 · 交互脚本（3B：四段全通——轮询状态机 + 渲染 + 导出） */
 
 // ---------- 流水线四段定义：主区进度条与侧边栏状态共用这一份 ----------
 var STAGES = [
@@ -7,10 +7,13 @@ var STAGES = [
   { key: "compliance", name: "合规体检" },
   { key: "quality",    name: "交叉质检" },
 ];
-var POLL_INTERVAL = 1500;    // 轮询间隔 1.5 秒
-var POLL_TIMEOUT = 180000;   // 轮询上限 3 分钟
+var POLL_INTERVAL = 1500;     // 轮询间隔 1.5 秒
+var POLL_TIMEOUT = 300000;    // 轮询上限 5 分钟（实测四段 30–60 秒，留 5–10 倍余量）
+var SLOW_WARN = 60000;        // 连续 60 秒 progress 无变化 → 显示"生成较慢"
 var pollTimer = null;
 var pollStartTime = 0;
+var lastProgressValue = -1;
+var lastProgressTime = 0;
 
 // ---------- Tab 切换：按钮与面板一一对应 ----------
 function switchTab(name) {
@@ -20,10 +23,13 @@ function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
     btn.classList.toggle("active", btn.dataset.tab === name);
   });
-  // 切 Tab 时从 window.lastResult 重新渲染，不依赖 DOM 是否还留着
-  if (name === "insight" && window.lastResult && window.lastResult.insight) {
-    renderInsight(window.lastResult.insight);
-  }
+  // 切 Tab 时从 window.lastResult 重新渲染目标面板，不依赖 DOM 是否还留着
+  var r = window.lastResult;
+  if (!r) { return; }
+  if (name === "insight" && r.insight) { renderMarkdown("insight-content", r.insight); }
+  else if (name === "listing" && r.listing) { renderMarkdown("listing-content", r.listing); }
+  else if (name === "compliance" && r.compliance) { renderCompliance(r.compliance); }
+  else if (name === "quality" && r.quality) { renderMarkdown("quality-content", r.quality); }
 }
 
 // ---------- 抽屉（≤768px）：汉堡开 / 遮罩或汉堡关 ----------
@@ -78,7 +84,7 @@ function resetReview() {
   document.getElementById("btn-export-compliance").disabled = true;
 }
 
-// ---------- 图片上传区（纯 UI 预览，识图阶段 3 接入） ----------
+// ---------- 图片上传区（纯 UI 预览，识图后续阶段接入） ----------
 function setupUpload() {
   var zone = document.getElementById("upload-zone");
   var input = document.getElementById("image-input");
@@ -142,6 +148,8 @@ function generateAll() {
   if (!info.product) { showToast("请先填写产品名称"); return; }
   setButtonLoading(true);
   hideErrorBar();
+  hideSlowTip();
+  lastProgressValue = -1;
   fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -164,6 +172,7 @@ function generateAll() {
 // ---------- 轮询：done / failed / 超时 三个条件都会停 ----------
 function startPolling(taskId) {
   pollStartTime = Date.now();
+  lastProgressTime = pollStartTime;
   stopPolling();
   pollTimer = setInterval(function () { pollOnce(taskId); }, POLL_INTERVAL);
   pollOnce(taskId);
@@ -187,20 +196,45 @@ function pollOnce(taskId) {
       showErrorBar(res.task.error || "任务不存在");
       return;
     }
+    trackProgress(res.task.progress);
     updateStages(res.task);
     if (res.task.status === "done") {
       stopPolling();
       window.lastResult = res.task.result;
-      renderInsight(res.task.result.insight);
+      renderAllResults(res.task.result);
+      resetReviewGate();
       setButtonLoading(false);
+      hideSlowTip();
     } else if (res.task.status === "failed") {
       stopPolling();
+      window.lastResult = res.task.result;
+      renderAllResults(res.task.result);
+      resetReviewGate();
       setButtonLoading(false);
+      hideSlowTip();
       showErrorBar(res.task.error || "生成失败");
     }
   }).catch(function () {
-    // 单次网络异常：不中断轮询、不白屏，靠 3 分钟超时兜底
+    // 单次网络异常：不中断轮询、不白屏，靠 5 分钟超时兜底
   });
+}
+
+// ---------- 进度跟踪：连续 60 秒无变化显示"生成较慢"，不中止轮询 ----------
+function trackProgress(progress) {
+  var now = Date.now();
+  if (progress !== lastProgressValue) {
+    lastProgressValue = progress;
+    lastProgressTime = now;
+    hideSlowTip();
+  } else if (now - lastProgressTime > SLOW_WARN) {
+    showSlowTip();
+  }
+}
+function showSlowTip() {
+  document.getElementById("slow-tip").classList.remove("hidden");
+}
+function hideSlowTip() {
+  document.getElementById("slow-tip").classList.add("hidden");
 }
 
 // ---------- 状态联动：主区进度条 + 侧边栏，共用同一份 task 数据 ----------
@@ -210,24 +244,106 @@ function updateStages(task) {
     var state = "todo";
     if (task.result && task.result[s.key]) { state = "done"; }
     else if (task.status === "running" && task.stage === s.key) { state = "active"; }
+    else if (task.status === "failed" && task.stage === s.key) { state = "error"; }
     var icon = state === "done" ? "✅ " :
-      state === "active" ? '<span class="spin">⟳</span> ' : "○ ";
+      state === "active" ? '<span class="spin">⟳</span> ' :
+      state === "error" ? "❌ " : "○ ";
     var sideIcon = state === "done" ? "✅ " :
-      state === "active" ? '<span class="spin">⟳</span> ' : "⏳ ";
+      state === "active" ? '<span class="spin">⟳</span> ' :
+      state === "error" ? "❌ " : "⏳ ";
     var bar = document.getElementById("stage-" + (i + 1));
     bar.className = "stage stage-" + state;
     bar.innerHTML = icon + s.name;
     var side = document.getElementById("agent-" + (i + 1));
     side.className = "py-1 " + (state === "todo" ? "text-slate-400" :
-      state === "active" ? "text-brand" : "text-[#15803D]");
+      state === "active" ? "text-brand" :
+      state === "error" ? "text-[#B91C1C]" : "text-[#15803D]");
     side.innerHTML = sideIcon + s.name;
   }
 }
 
-// ---------- 渲染市场洞察：只转义 < 和 &（> 是 Markdown 引用块语法，不转义），再 marked.parse ----------
-function renderInsight(text) {
+// ---------- 渲染：Markdown 公共渲染（只转义 < 和 &，> 是 Markdown 引用块语法） ----------
+function renderMarkdown(elId, text) {
   var safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  document.getElementById("insight-content").innerHTML = marked.parse(safe);
+  document.getElementById(elId).innerHTML = marked.parse(safe);
+}
+
+// ---------- 渲染：合规表格动态生成（单元格全量转义，模型输出不执行） ----------
+function renderCompliance(rows) {
+  var box = document.getElementById("compliance-content");
+  if (!rows || rows.length === 0) {
+    box.innerHTML = '<p class="text-slate-400">合规体检未能解析出结构化结果，请展开下方"证据与来源"查看模型原文。</p>';
+    return;
+  }
+  var head = '<div class="overflow-x-auto rounded-2xl border border-line bg-white card-shadow">' +
+    '<table class="compliance w-full text-sm border-collapse">' +
+    '<colgroup><col style="width:25%"><col style="width:10%"><col style="width:30%"><col style="width:25%"><col style="width:10%"></colgroup>' +
+    '<thead><tr><th>风险项</th><th>风险等级</th><th>依据</th><th>整改建议</th><th>需人工核实</th></tr></thead><tbody>';
+  var body = "";
+  rows.forEach(function (r) {
+    var cls = r.risk_level === "红" ? "tag-red" : r.risk_level === "黄" ? "tag-yellow" : "tag-green";
+    body += "<tr><td>" + escapeHtml(r.item) + '</td><td><span class="tag ' + cls + '">' +
+      escapeHtml(r.risk_level) + "</span></td><td>" + escapeHtml(r.basis) + "</td><td>" +
+      escapeHtml(r.action) + "</td><td>" + escapeHtml(r.need_verify) + "</td></tr>";
+  });
+  box.innerHTML = head + body + "</tbody></table></div>";
+}
+
+// ---------- 渲染：四 Tab 全量渲染 + 证据折叠区填原文 ----------
+function renderAllResults(result) {
+  if (result.insight) { renderMarkdown("insight-content", result.insight); }
+  if (result.listing) { renderMarkdown("listing-content", result.listing); }
+  if (result.compliance) { renderCompliance(result.compliance); }
+  if (result.quality) { renderMarkdown("quality-content", result.quality); }
+  fillEvidence("evidence-insight", result.insight);
+  fillEvidence("evidence-listing", result.listing);
+  fillEvidence("evidence-compliance", result.compliance_raw);
+  fillEvidence("evidence-quality", result.quality);
+}
+function fillEvidence(id, text) {
+  document.getElementById(id).textContent = text || "（本段未返回内容）";
+}
+
+// ---------- 审核闸口：新结果渲染完成那一刻重置一次，不在轮询帧里反复重置 ----------
+function resetReviewGate() {
+  document.getElementById("review-check").checked = false;
+  resetReview();
+}
+
+// ---------- 导出：当前 Tab 内容下载为 .md（Blob + a.download） ----------
+function exportTab(name) {
+  var r = window.lastResult || {};
+  var content = "";
+  var filename = "导出.md";
+  if (name === "insight") { content = r.insight || ""; filename = "市场洞察.md"; }
+  else if (name === "listing") { content = r.listing || ""; filename = "多语种Listing.md"; }
+  else if (name === "compliance") {
+    content = (r.compliance && r.compliance.length) ? rowsToMarkdown(r.compliance) : (r.compliance_raw || "");
+    filename = "合规体检.md";
+  }
+  else if (name === "quality") { content = r.quality || ""; filename = "质检报告.md"; }
+  if (!content) { showToast("当前没有可导出的内容，请先生成"); return; }
+  var blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ---------- 合规行转 Markdown 表格（导出用） ----------
+function rowsToMarkdown(rows) {
+  var md = "| 风险项 | 风险等级 | 依据 | 整改建议 | 需人工核实 |\n|---|---|---|---|---|\n";
+  rows.forEach(function (r) {
+    md += "| " + r.item + " | " + r.risk_level + " | " + r.basis + " | " + r.action + " | " + r.need_verify + " |\n";
+  });
+  return md;
+}
+
+// ---------- HTML 全量转义（合规表格单元格用） ----------
+function escapeHtml(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // ---------- 生成按钮加载态：禁用 + 图标转圈 ----------
@@ -246,11 +362,6 @@ function showErrorBar(msg) {
 }
 function hideErrorBar() {
   document.getElementById("error-bar").classList.add("hidden");
-}
-
-// ---------- 假按钮：演示模式提示（识图/生图/导出后续阶段接入） ----------
-function demoAction() {
-  showToast("演示模式：该功能将在后续阶段接入");
 }
 
 // ---------- 初始化 ----------
