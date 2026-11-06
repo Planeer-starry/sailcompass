@@ -1,4 +1,4 @@
-/* 出海罗盘 · 交互脚本（3B：四段全通——轮询状态机 + 渲染 + 导出） */
+/* 出海罗盘 · 交互脚本（状态机与轮询 + 小海螺追问；渲染函数在 render.js） */
 
 // ---------- 流水线四段定义：主区进度条与侧边栏状态共用这一份 ----------
 var STAGES = [
@@ -15,6 +15,11 @@ var pollStartTime = 0;
 var lastProgressValue = -1;
 var lastProgressTime = 0;
 
+// ---------- 小海螺追问状态：当前任务 + 各 Tab 独立对话历史 ----------
+var currentTaskId = "";
+var chatHistories = {};   // tab -> [{role: "user"|"assistant", text: "..."}]
+var chatPending = false;
+
 // ---------- Tab 切换：按钮与面板一一对应 ----------
 function switchTab(name) {
   document.querySelectorAll(".tab-panel").forEach(function (panel) {
@@ -23,13 +28,14 @@ function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
     btn.classList.toggle("active", btn.dataset.tab === name);
   });
-  // 切 Tab 时从 window.lastResult 重新渲染目标面板，不依赖 DOM 是否还留着
+  // 切 Tab 时从 window.lastResult 重新渲染目标面板；追问气泡从本地历史重绘
   var r = window.lastResult;
   if (!r) { return; }
   if (name === "insight" && r.insight) { renderMarkdown("insight-content", r.insight); }
   else if (name === "listing" && r.listing) { renderMarkdown("listing-content", r.listing); }
   else if (name === "compliance" && r.compliance) { renderCompliance(r.compliance); }
   else if (name === "quality" && r.quality) { renderMarkdown("quality-content", r.quality); }
+  renderChatList(name, chatHistories[name] || []);
 }
 
 // ---------- 抽屉（≤768px）：汉堡开 / 遮罩或汉堡关 ----------
@@ -162,6 +168,8 @@ function generateAll() {
       showErrorBar(res.data.error || "创建任务失败");
       return;
     }
+    currentTaskId = res.data.task_id;
+    chatHistories = {};   // 新任务 → 追问历史清零
     startPolling(res.data.task_id);
   }).catch(function () {
     setButtonLoading(false);
@@ -198,21 +206,14 @@ function pollOnce(taskId) {
     }
     trackProgress(res.task.progress);
     updateStages(res.task);
-    if (res.task.status === "done") {
+    if (res.task.status === "done" || res.task.status === "failed") {
       stopPolling();
       window.lastResult = res.task.result;
       renderAllResults(res.task.result);
       resetReviewGate();
       setButtonLoading(false);
       hideSlowTip();
-    } else if (res.task.status === "failed") {
-      stopPolling();
-      window.lastResult = res.task.result;
-      renderAllResults(res.task.result);
-      resetReviewGate();
-      setButtonLoading(false);
-      hideSlowTip();
-      showErrorBar(res.task.error || "生成失败");
+      if (res.task.status === "failed") { showErrorBar(res.task.error || "生成失败"); }
     }
   }).catch(function () {
     // 单次网络异常：不中断轮询、不白屏，靠 5 分钟超时兜底
@@ -262,48 +263,6 @@ function updateStages(task) {
   }
 }
 
-// ---------- 渲染：Markdown 公共渲染（只转义 < 和 &，> 是 Markdown 引用块语法） ----------
-function renderMarkdown(elId, text) {
-  var safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  document.getElementById(elId).innerHTML = marked.parse(safe);
-}
-
-// ---------- 渲染：合规表格动态生成（单元格全量转义，模型输出不执行） ----------
-function renderCompliance(rows) {
-  var box = document.getElementById("compliance-content");
-  if (!rows || rows.length === 0) {
-    box.innerHTML = '<p class="text-slate-400">合规体检未能解析出结构化结果，请展开下方"证据与来源"查看模型原文。</p>';
-    return;
-  }
-  var head = '<div class="overflow-x-auto rounded-2xl border border-line bg-white card-shadow">' +
-    '<table class="compliance w-full text-sm border-collapse">' +
-    '<colgroup><col style="width:25%"><col style="width:10%"><col style="width:30%"><col style="width:25%"><col style="width:10%"></colgroup>' +
-    '<thead><tr><th>风险项</th><th>风险等级</th><th>依据</th><th>整改建议</th><th>需人工核实</th></tr></thead><tbody>';
-  var body = "";
-  rows.forEach(function (r) {
-    var cls = r.risk_level === "红" ? "tag-red" : r.risk_level === "黄" ? "tag-yellow" : "tag-green";
-    body += "<tr><td>" + escapeHtml(r.item) + '</td><td><span class="tag ' + cls + '">' +
-      escapeHtml(r.risk_level) + "</span></td><td>" + escapeHtml(r.basis) + "</td><td>" +
-      escapeHtml(r.action) + "</td><td>" + escapeHtml(r.need_verify) + "</td></tr>";
-  });
-  box.innerHTML = head + body + "</tbody></table></div>";
-}
-
-// ---------- 渲染：四 Tab 全量渲染 + 证据折叠区填原文 ----------
-function renderAllResults(result) {
-  if (result.insight) { renderMarkdown("insight-content", result.insight); }
-  if (result.listing) { renderMarkdown("listing-content", result.listing); }
-  if (result.compliance) { renderCompliance(result.compliance); }
-  if (result.quality) { renderMarkdown("quality-content", result.quality); }
-  fillEvidence("evidence-insight", result.insight);
-  fillEvidence("evidence-listing", result.listing);
-  fillEvidence("evidence-compliance", result.compliance_raw);
-  fillEvidence("evidence-quality", result.quality);
-}
-function fillEvidence(id, text) {
-  document.getElementById(id).textContent = text || "（本段未返回内容）";
-}
-
 // ---------- 审核闸口：新结果渲染完成那一刻重置一次，不在轮询帧里反复重置 ----------
 function resetReviewGate() {
   document.getElementById("review-check").checked = false;
@@ -331,19 +290,36 @@ function exportTab(name) {
   URL.revokeObjectURL(a.href);
 }
 
-// ---------- 合规行转 Markdown 表格（导出用） ----------
-function rowsToMarkdown(rows) {
-  var md = "| 风险项 | 风险等级 | 依据 | 整改建议 | 需人工核实 |\n|---|---|---|---|---|\n";
-  rows.forEach(function (r) {
-    md += "| " + r.item + " | " + r.risk_level + " | " + r.basis + " | " + r.action + " | " + r.need_verify + " |\n";
+// ---------- 小海螺追问：发送 POST /api/chat，历史按 Tab 隔离 ----------
+function sendChat(tab, btn) {
+  var box = document.getElementById("chat-" + tab);
+  var input = box.querySelector(".chat-input");
+  var question = input.value.trim();
+  if (!question) { showToast("请先输入问题"); return; }
+  if (!currentTaskId) { showToast("请先生成报告，再对小海螺提问"); return; }
+  if (chatPending) { return; }
+  chatPending = true;
+  btn.disabled = true;
+  input.value = "";
+  appendChatBubble(tab, "user", question);
+  fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task_id: currentTaskId, tab: tab, question: question }),
+  }).then(function (resp) {
+    return resp.json().then(function (data) { return { ok: resp.ok, data: data }; });
+  }).then(function (res) {
+    if (!res.ok) { appendChatError(tab, res.data.error || "请稍后重试"); return; }
+    var answer = res.data.answer;
+    appendChatBubble(tab, "assistant", answer);
+    (chatHistories[tab] = chatHistories[tab] || []).push({ role: "user", text: question });
+    chatHistories[tab].push({ role: "assistant", text: answer });
+  }).catch(function () {
+    appendChatError(tab, "网络异常，请稍后重试");
+  }).finally(function () {
+    chatPending = false;
+    btn.disabled = false;
   });
-  return md;
-}
-
-// ---------- HTML 全量转义（合规表格单元格用） ----------
-function escapeHtml(s) {
-  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // ---------- 生成按钮加载态：禁用 + 图标转圈 ----------
@@ -367,5 +343,14 @@ function hideErrorBar() {
 // ---------- 初始化 ----------
 document.addEventListener("DOMContentLoaded", function () {
   setupUpload();
+  // 追问输入框：Enter 发送（四个 Tab 统一绑定）
+  document.querySelectorAll(".chat-box").forEach(function (box) {
+    var tab = box.id.replace("chat-", "");
+    var input = box.querySelector(".chat-input");
+    var btn = box.querySelector("button");
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); sendChat(tab, btn); }
+    });
+  });
   switchTab("insight");
 });

@@ -17,6 +17,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/render.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
@@ -146,6 +147,14 @@
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-insight" class="evidence-pre">（生成后显示原文）</pre></details>
         <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('insight')">⬇️ 导出</button></div>
+        <div id="chat-insight" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
+          <div class="chat-list"></div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" placeholder="例如：待人工核实清单里第一条该怎么处理？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('insight', this)">发送</button>
+          </div>
+        </div>
       </section>
 
       <!-- 面板 2 · 多语种 Listing -->
@@ -155,6 +164,14 @@
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-listing" class="evidence-pre">（生成后显示原文）</pre></details>
         <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('listing')">⬇️ 导出</button></div>
+        <div id="chat-listing" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
+          <div class="chat-list"></div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" placeholder="例如：英文标题里的 12-Hour 能保留吗？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('listing', this)">发送</button>
+          </div>
+        </div>
       </section>
 
       <!-- 面板 3 · 合规体检：表格 + 人工复核 -->
@@ -172,6 +189,14 @@
           <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-compliance" class="evidence-pre">（生成后显示模型原文）</pre></details>
+        <div id="chat-compliance" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
+          <div class="chat-list"></div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" placeholder="例如：第二条为什么判红？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('compliance', this)">发送</button>
+          </div>
+        </div>
       </section>
 
       <!-- 面板 4 · 质检：三段固定结构 -->
@@ -181,6 +206,14 @@
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-quality" class="evidence-pre">（生成后显示原文）</pre></details>
         <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('quality')">⬇️ 导出</button></div>
+        <div id="chat-quality" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
+          <div class="chat-list"></div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" placeholder="例如：改进建议第一条具体怎么落地？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('quality', this)">发送</button>
+          </div>
+        </div>
       </section>
 
       <footer class="text-slate-400 text-sm mt-10 text-center">请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。</footer>

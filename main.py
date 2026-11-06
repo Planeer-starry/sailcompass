@@ -1,4 +1,5 @@
-"""出海罗盘 SailCompass · 应用入口（3B：异步任务 + 轮询，四段流水线全通）"""
+"""出海罗盘 SailCompass · 应用入口（3B：四段流水线 + 小海螺追问）"""
+import json
 from pathlib import Path
 
 import uvicorn
@@ -114,6 +115,42 @@ def get_task_status(task_id: str):
         "result": task["result"],
         "error": task["error"],
     }
+
+
+class ChatRequest(BaseModel):
+    """追问请求：某个任务某个 Tab 的一句提问"""
+    task_id: str
+    tab: str
+    question: str
+
+
+def _build_chat_context(result: dict, tab: str) -> str:
+    """把当前 Tab 对应的报告内容拼成追问上下文（compliance = rows + raw）"""
+    if tab == "compliance":
+        rows = json.dumps(result.get("compliance", []), ensure_ascii=False, indent=2)
+        raw = result.get("compliance_raw", "")
+        return "【风险清单】\n" + rows + "\n\n【模型原文】\n" + raw
+    return str(result.get(tab, ""))
+
+
+@app.post("/api/chat")
+def chat(req: ChatRequest):
+    """小海螺追问：只依据当前页报告内容回答；异常明文返回，不静默"""
+    if req.tab not in ("insight", "listing", "compliance", "quality"):
+        return JSONResponse(status_code=400, content={"error": "未知的页面：" + req.tab})
+    if not req.question.strip():
+        return JSONResponse(status_code=400, content={"error": "问题不能为空"})
+    task = task_manager.get_task(req.task_id)
+    if task is None:
+        return JSONResponse(status_code=404, content={"error": "任务不存在"})
+    context = _build_chat_context(task["result"], req.tab)
+    if not context.strip():
+        return JSONResponse(status_code=400, content={"error": "本页暂无报告内容，请先生成"})
+    try:
+        answer = agents.answer_question(req.task_id, req.tab, context, req.question.strip())
+        return {"answer": answer}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"回答失败：{e}"})
 
 
 if __name__ == "__main__":

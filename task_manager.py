@@ -8,6 +8,10 @@ TASKS: dict[str, dict] = {}
 # 任务上限：超过后清理最老的，防止内存无限增长
 MAX_TASKS = 100
 
+# 追问对话历史：key = "task_id:tab" -> messages 列表（每个组合最多保留最近 10 轮）
+CHAT_HISTORY: dict[str, list] = {}
+MAX_CHAT_ROUNDS = 10
+
 
 def create_task() -> str:
     """新建任务并返回 task_id；每次新建时顺手清理超限旧任务"""
@@ -43,11 +47,29 @@ def append_result(task_id: str, **kwargs) -> None:
         task["result"].update(kwargs)
 
 
+def get_chat_history(task_id: str, tab: str) -> list:
+    """读取某任务某页的追问历史（多轮上下文用）"""
+    return CHAT_HISTORY.get(task_id + ":" + tab, [])
+
+
+def append_chat(task_id: str, tab: str, question: str, answer: str) -> None:
+    """追加一轮问答并裁剪到最近 10 轮（20 条消息）"""
+    msgs = CHAT_HISTORY.setdefault(task_id + ":" + tab, [])
+    msgs.append({"role": "user", "content": question})
+    msgs.append({"role": "assistant", "content": answer})
+    overflow = len(msgs) - MAX_CHAT_ROUNDS * 2
+    if overflow > 0:
+        del msgs[:overflow]
+
+
 def cleanup() -> None:
-    """任务数超过上限时，按创建时间删掉最老的"""
+    """任务数超过上限时，按创建时间删掉最老的（含其追问历史）"""
     if len(TASKS) <= MAX_TASKS:
         return
     overflow = len(TASKS) - MAX_TASKS
     oldest = sorted(TASKS.items(), key=lambda item: item[1]["created"])[:overflow]
     for task_id, _ in oldest:
         del TASKS[task_id]
+        # 该任务的追问历史一并清掉
+        for key in [k for k in CHAT_HISTORY if k.startswith(task_id + ":")]:
+            del CHAT_HISTORY[key]

@@ -6,6 +6,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
+import task_manager
+
 # 启动时加载 .env（变量名：API_BASE_URL / API_KEY / MODEL，与旧版保持一致）
 load_dotenv()
 
@@ -30,16 +32,24 @@ def _get_client() -> OpenAI:
 
 
 def call_llm(system: str, user: str, temperature: float = 0.3) -> str:
-    """调用大模型：system 为角色与规则，user 为具体内容；异常原样抛出，由路由层转为错误响应"""
+    """两条消息的便捷封装（四段流水线用）"""
+    return call_llm_messages(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature,
+    )
+
+
+def call_llm_messages(messages: list, temperature: float = 0.3) -> str:
+    """底层：完整 messages 列表调用大模型；异常原样抛出，由路由层转为错误响应"""
     model = os.getenv("MODEL")
     if not model:
         raise RuntimeError("缺少 MODEL，请检查 .env 文件")
     resp = _get_client().chat.completions.create(
         model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
+        messages=messages,
         temperature=temperature,
     )
     text = resp.choices[0].message.content
@@ -184,3 +194,21 @@ def _format_rows_brief(rows: list) -> str:
         for a in red_actions:
             lines.append("- " + a)
     return "\n".join(lines)
+
+# ---------- 小海螺 · 追问助手 ----------
+CHAT_SYSTEM_PROMPT = (
+    "你是出海罗盘的助手小海螺，基于给定的报告内容回答用户追问，"
+    "只依据报告内容回答，不知道就说不知道，不要编造。"
+    "回答用简体中文，简洁直接，必要时引用报告原文。"
+)
+
+
+def answer_question(task_id: str, tab: str, context: str, question: str) -> str:
+    """小海螺：基于当前页报告内容回答追问；多轮历史存内存，每个 task_id+tab 最多保留最近 10 轮"""
+    system = CHAT_SYSTEM_PROMPT + "\n\n===== 当前页面报告内容 =====\n" + context
+    messages = [{"role": "system", "content": system}]
+    messages += task_manager.get_chat_history(task_id, tab)
+    messages.append({"role": "user", "content": question})
+    answer = call_llm_messages(messages, temperature=0.3)
+    task_manager.append_chat(task_id, tab, question, answer)
+    return answer
