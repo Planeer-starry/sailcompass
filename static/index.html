@@ -15,6 +15,7 @@
       },
     };
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
 </head>
@@ -86,17 +87,17 @@
         <input id="image-input" type="file" accept="image/*" class="hidden">
       </div>
 
-      <button class="btn-primary w-full h-12 rounded-[10px] bg-brand text-white font-medium hover:bg-[#172554]" onclick="demoAction()">🚀 开始生成</button>
+      <button id="btn-generate" class="btn-primary w-full h-12 rounded-[10px] bg-brand text-white font-medium hover:bg-[#172554]" onclick="generateAll()"><span id="btn-icon" class="inline-block">🚀</span> <span id="btn-label">开始生成</span></button>
 
       <hr class="border-line my-6">
 
-      <!-- Agent 状态：阶段 2 全部待命 -->
+      <!-- Agent 状态：与主区进度条共用 STAGES 数据，由 updateStages() 同步更新 -->
       <h2 class="font-semibold mb-3">Agent 状态</h2>
-      <ul class="text-slate-400">
-        <li class="py-1">⏳ 市场洞察</li>
-        <li class="py-1">⏳ 多语种文案</li>
-        <li class="py-1">⏳ 合规体检</li>
-        <li class="py-1">⏳ 交叉质检</li>
+      <ul>
+        <li id="agent-1" class="py-1 text-slate-400">⏳ 市场洞察</li>
+        <li id="agent-2" class="py-1 text-slate-400">⏳ 多语种文案</li>
+        <li id="agent-3" class="py-1 text-slate-400">⏳ 合规体检</li>
+        <li id="agent-4" class="py-1 text-slate-400">⏳ 交叉质检</li>
       </ul>
     </div>
   </aside>
@@ -112,6 +113,24 @@
         <p class="text-slate-500 mt-1">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</p>
       </header>
 
+      <!-- 生成进度：本轮只有第一段会点亮，后三段 3B 接入 -->
+      <div class="flex flex-wrap items-center gap-2 mb-3 text-sm">
+        <span id="stage-1" class="stage stage-todo">○ 市场洞察</span>
+        <span class="text-slate-300">→</span>
+        <span id="stage-2" class="stage stage-todo">○ 多语种文案</span>
+        <span class="text-slate-300">→</span>
+        <span id="stage-3" class="stage stage-todo">○ 合规体检</span>
+        <span class="text-slate-300">→</span>
+        <span id="stage-4" class="stage stage-todo">○ 交叉质检</span>
+        <span class="text-xs text-[#94A3B8] ml-2">当前为 3A 阶段，后三段将在下一步接入</span>
+      </div>
+
+      <!-- 错误条：生成失败/超时时显示，带重试按钮 -->
+      <div id="error-bar" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-6 flex items-center justify-between gap-3">
+        <span id="error-msg" class="text-sm"></span>
+        <button class="btn-primary shrink-0 h-10 px-4 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateAll()">重试</button>
+      </div>
+
       <!-- Tab 导航 -->
       <nav class="flex gap-6 border-b border-line mb-6">
         <button class="tab-btn" data-tab="insight" onclick="switchTab('insight')">市场洞察</button>
@@ -122,7 +141,7 @@
 
       <!-- 面板 1 · 市场洞察：六小节结构与 prompts/insight.md 输出一致 -->
       <section id="panel-insight" class="tab-panel">
-        <div class="bg-white border border-line rounded-2xl card-shadow p-6">
+        <div id="insight-content" class="insight-md bg-white border border-line rounded-2xl card-shadow p-6">
           <h4 class="font-bold text-brand mt-4 mb-2">目标市场判断</h4>
           <ul class="list-disc pl-6 space-y-1"><li>保温杯属高频刚需品类，北美与欧洲站全年稳定需求，秋冬为旺季</li><li>316 不锈钢内胆属中高端配置，适合走"品质升级"路线而非低价走量</li><li>东南亚站该品类价格敏感，与 316 内胆定位不匹配，建议优先欧美</li><li>Amazon 美国站竞争最充分，新卖家可考虑从欧洲站或独立站切细分人群</li></ul>
           <h4 class="font-bold text-brand mt-4 mb-2">目标人群与使用场景</h4>

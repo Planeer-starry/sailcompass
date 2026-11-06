@@ -47,3 +47,18 @@ details.evidence[open] summary::before { content: "▾"; }
 /* toast 提示：淡入淡出（.hide 为隐藏态） */
 #toast { transition: opacity 200ms ease; }
 #toast.hide { opacity: 0; pointer-events: none; }
+/* 生成进度条三态：待命灰 / 进行中主色 / 完成绿 */
+.stage-todo { color: #94A3B8; }
+.stage-active { color: #1E3A8A; font-weight: 600; }
+.stage-done { color: #15803D; }
+
+/* 转圈动画：⟳ 图标用 */
+.spin { display: inline-block; animation: rotate-360 1s linear infinite; }
+@keyframes rotate-360 { to { transform: rotate(360deg); } }
+
+/* 市场洞察渲染区：marked 输出的 h2/ul/p 适配（与假数据视觉一致） */
+.insight-md h2 { font-size: 18px; font-weight: 700; color: #1E3A8A; margin: 20px 0 8px; }
+.insight-md h2:first-child { margin-top: 0; }
+.insight-md ul { list-style: disc; padding-left: 24px; }
+.insight-md li { margin: 4px 0; line-height: 1.7; }
+.insight-md p { margin: 8px 0; line-height: 1.7; }

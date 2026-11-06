@@ -1,14 +1,15 @@
-"""出海罗盘 SailCompass · 应用入口（阶段 1：骨架 + 市场洞察单 Agent）"""
+"""出海罗盘 SailCompass · 应用入口（阶段 3A：异步任务 + 轮询，只跑市场洞察）"""
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import agents
+import task_manager
 
 # 项目根目录：保证在任意工作目录启动都能找到 static / prompts
 BASE_DIR = Path(__file__).parent
@@ -39,37 +40,63 @@ def health():
     return {"ok": True}
 
 
-class InsightRequest(BaseModel):
-    """阶段 1 请求体：产品名称必填，核心卖点可填"""
+class GenerateRequest(BaseModel):
+    """生成请求：产品六字段，产品名称必填"""
     product: str
     selling_points: str = ""
+    params: str = ""
+    category: str = ""
+    platform: str = ""
+    languages: list[str] = []
 
 
-def _fill_info(req: InsightRequest) -> dict:
-    """补全 info 六字段：阶段 1 只收两个字段，其余传空值，契约不漂移"""
+def _to_info(req: GenerateRequest) -> dict:
+    """请求模型转 info dict（契约六字段）"""
     return {
         "product": req.product.strip(),
         "selling_points": req.selling_points.strip(),
-        "params": "",
-        "category": "",
-        "platform": "",
-        "languages": [],
+        "params": req.params.strip(),
+        "category": req.category.strip(),
+        "platform": req.platform.strip(),
+        "languages": req.languages,
     }
 
 
-@app.post("/api/insight")
-def insight(req: InsightRequest):
-    """市场洞察：同步调用 Agent，最长约 3 分钟；异常明文返回，不静默"""
+@app.post("/api/generate")
+def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
+    """创建任务并立刻返回 task_id，流水线在后台跑（本轮只跑第一段）"""
     if not req.product.strip():
-        raise HTTPException(status_code=400, detail="产品名称不能为空")
-    info = _fill_info(req)
+        # 错误格式统一 {"error": ...}，不用 HTTPException 默认的 {"detail": ...}
+        return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
+    task_id = task_manager.create_task()
+    background_tasks.add_task(_run_pipeline, task_id, _to_info(req))
+    return {"task_id": task_id}
+
+
+def _run_pipeline(task_id: str, info: dict) -> None:
+    """后台流水线：整体 try/except，异常写入任务，不静默"""
     try:
+        task_manager.update_task(task_id, stage="insight", progress=1)
         text = agents.market_insight(info)
-        return {"ok": True, "insight": text}
-    except NotImplementedError as e:
-        raise HTTPException(status_code=501, detail=str(e))
+        task_manager.update_task(task_id, result={"insight": text}, status="done")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"生成失败：{e}")
+        task_manager.update_task(task_id, status="failed", error=str(e))
+    # 3B 阶段在此续接：localize_listing → compliance_check → quality_check
+
+
+@app.get("/api/task/{task_id}")
+def get_task_status(task_id: str):
+    """轮询端点：前端每 1.5 秒查一次"""
+    task = task_manager.get_task(task_id)
+    if task is None:
+        return JSONResponse(status_code=404, content={"error": "任务不存在"})
+    return {
+        "status": task["status"],
+        "stage": task["stage"],
+        "progress": task["progress"],
+        "result": task["result"],
+        "error": task["error"],
+    }
 
 
 if __name__ == "__main__":
