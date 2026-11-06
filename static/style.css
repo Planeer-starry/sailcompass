@@ -1,0 +1,49 @@
+/* 出海罗盘 · 补充样式：Tailwind 写不出来的细节放这里 */
+
+/* 卡片阴影（视觉规格：0 1px 3px rgba(15,23,42,.08)） */
+.card-shadow { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
+
+/* Tab 按钮：未选中 #64748B，选中主色文字 + 2px 主色下划线 */
+.tab-btn { color: #64748B; border-bottom: 2px solid transparent; padding: 10px 4px; }
+.tab-btn.active { color: #1E3A8A; border-bottom-color: #1E3A8A; font-weight: 600; }
+
+/* Tab 面板切换：150ms 透明度过渡（display:none 无法做 transition，用 animation 实现） */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: panel-fade 150ms ease; }
+@keyframes panel-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* 禁用按钮：半透明 + 禁用光标，且 hover 不变色（看起来不能点就是不能点） */
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:disabled:hover { background-color: #1E3A8A; }
+
+/* details 证据折叠区：边框 + 圆角 + 自定义箭头 ▸/▾ */
+details.evidence { border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; }
+details.evidence summary { cursor: pointer; list-style: none; font-weight: 500; }
+details.evidence summary::-webkit-details-marker { display: none; }
+details.evidence summary::before { content: "▸"; margin-right: 6px; color: #1E3A8A; }
+details.evidence[open] summary::before { content: "▾"; }
+
+/* 目标语言多选按钮选中态 */
+.lang-btn.active { background-color: #1E3A8A; border-color: #1E3A8A; color: #FFFFFF; }
+
+/* 合规风险等级彩色标签 */
+.tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; white-space: nowrap; }
+.tag-red { background-color: #FEF2F2; color: #B91C1C; }
+.tag-yellow { background-color: #FFFBEB; color: #B45309; }
+.tag-green { background-color: #F0FDF4; color: #15803D; }
+
+/* 合规表格：表头底色 + 单元格内边距 */
+.compliance th, .compliance td { padding: 10px 12px; text-align: left; vertical-align: top; }
+.compliance th { background-color: #F8FAFC; color: #334155; font-weight: 600; white-space: nowrap; }
+.compliance tbody tr { border-top: 1px solid #E2E8F0; }
+
+/* 侧边栏抽屉：滑动过渡 + 打开状态（≤768px 由 -translate-x-full 隐藏，.open 滑入） */
+#sidebar { transition: transform 200ms ease; }
+#sidebar.open { transform: translateX(0); }
+
+/* 上传区拖拽悬停高亮 */
+#upload-zone.dragover { border-color: #1E3A8A; background-color: #F8FAFC; }
+
+/* toast 提示：淡入淡出（.hide 为隐藏态） */
+#toast { transition: opacity 200ms ease; }
+#toast.hide { opacity: 0; pointer-events: none; }

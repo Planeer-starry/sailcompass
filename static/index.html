@@ -10,123 +10,203 @@
     tailwind.config = {
       theme: {
         extend: {
-          colors: {
-            brand: "#1E3A8A",
-            page: "#F8FAFC",
-            line: "#E2E8F0",
-          },
+          colors: { brand: "#1E3A8A", page: "#F8FAFC", line: "#E2E8F0" },
         },
       },
     };
   </script>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
-  <div class="max-w-3xl mx-auto px-4 py-10">
 
-    <!-- 页头 -->
-    <header class="mb-8">
-      <h1 class="text-2xl font-bold text-brand">出海罗盘 SailCompass</h1>
-      <p class="text-slate-500 mt-1">阶段 1 · 市场洞察（其余三个 Agent 阶段 2 上线）</p>
-    </header>
+  <!-- 汉堡按钮：仅 ≤768px 显示 -->
+  <button class="md:hidden fixed top-4 left-4 z-[70] w-11 h-11 rounded-lg bg-white border border-line text-xl" onclick="toggleDrawer()">☰</button>
 
-    <!-- 输入卡片 -->
-    <section class="bg-white border border-line rounded-2xl p-6 mb-6">
-      <label class="block font-medium mb-2" for="product">产品名称 <span class="text-red-500">*</span></label>
-      <input id="product" type="text" placeholder="例如：不锈钢保温杯"
-             class="w-full h-12 px-3 rounded-lg border border-line mb-4 focus:outline-none focus:border-brand">
+  <!-- 遮罩：抽屉打开时显示，点击关闭 -->
+  <div id="overlay" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="closeDrawer()"></div>
 
-      <label class="block font-medium mb-2" for="selling-points">核心卖点（选填）</label>
-      <textarea id="selling-points" rows="3" placeholder="例如：316 不锈钢内胆、12 小时保温、带茶隔"
-                class="w-full px-3 py-2 rounded-lg border border-line resize-none focus:outline-none focus:border-brand"></textarea>
+  <!-- toast：顶部居中，2 秒自动消失 -->
+  <div id="toast" class="hide fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-[#1E293B] text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
 
-      <button id="btn" onclick="generate()"
-              class="mt-4 w-full h-12 rounded-[10px] bg-brand text-white font-medium disabled:opacity-60">
-        生成市场洞察
-      </button>
-      <p id="hint" class="hidden text-center text-slate-400 mt-2">生成中，约 1–3 分钟，请勿关闭页面…</p>
-    </section>
+  <!-- ═══ 左侧侧边栏：320px，可滚动（小屏幕也能看到生成按钮） ═══ -->
+  <aside id="sidebar" class="fixed top-0 left-0 h-screen w-80 bg-white border-r border-line overflow-y-auto z-50 -translate-x-full md:translate-x-0">
+    <div class="px-6 py-6">
+      <h1 class="text-2xl font-bold text-brand mb-6">产品信息与目标市场</h1>
 
-    <!-- 错误提示 -->
-    <div id="error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-6"></div>
+      <!-- 六个字段：label 14px/600 + 控件 + 13px 灰色大白话提示 -->
+      <label class="block text-sm font-semibold mb-1" for="product">产品名称 <span class="text-red-500">*</span></label>
+      <input id="product" type="text" value="不锈钢保温杯" class="w-full h-12 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">写清是什么、有什么特点</p>
 
-    <!-- 结果卡片 -->
-    <section id="result" class="hidden bg-white border border-line rounded-2xl p-6">
-      <h2 class="text-xl font-bold text-brand mb-4">市场洞察报告</h2>
-      <div id="result-content" class="space-y-2 leading-relaxed"></div>
-    </section>
+      <label class="block text-sm font-semibold mb-1" for="selling-points">核心卖点</label>
+      <textarea id="selling-points" rows="3" class="w-full px-3 py-2 rounded-lg border border-line resize-none focus:outline-none focus:border-brand">316 不锈钢内胆、12 小时保温、带茶隔</textarea>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">突出差异化卖点，如材质、功能、认证</p>
 
-    <footer class="text-slate-400 text-sm mt-8 text-center">
-      请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。
-    </footer>
-  </div>
+      <label class="block text-sm font-semibold mb-1" for="params">产品参数</label>
+      <textarea id="params" rows="3" placeholder="例如：容量 500ml、高 22cm、重 280g" class="w-full px-3 py-2 rounded-lg border border-line resize-none focus:outline-none focus:border-brand"></textarea>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">容量、尺寸、材质等关键参数</p>
 
-  <script>
-    // 生成市场洞察：POST /api/insight
-    async function generate() {
-      const product = document.getElementById("product").value.trim();
-      const sellingPoints = document.getElementById("selling-points").value.trim();
-      if (!product) { showError("请先填写产品名称"); return; }
-      setLoading(true);
-      hideError();
-      try {
-        const resp = await fetch("/api/insight", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ product: product, selling_points: sellingPoints }),
-        });
-        const data = await resp.json();
-        if (!resp.ok) { throw new Error(data.detail || "生成失败，请稍后重试"); }
-        renderInsight(data.insight);
-      } catch (err) {
-        showError("生成失败：" + err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
+      <label class="block text-sm font-semibold mb-1" for="category">产品类目</label>
+      <select id="category" class="w-full h-12 px-3 rounded-lg border border-line bg-white focus:outline-none focus:border-brand">
+        <option>3C电子</option><option>家具家居</option><option>服装鞋帽</option><option>皮具箱包</option>
+        <option>户外用品</option><option>美妆个护</option><option>母婴玩具</option><option>汽车配件</option>
+        <option>五金工具</option><option>食品饮料</option><option selected>其他</option>
+      </select>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">决定对标的市场与竞品</p>
 
-    // 按行渲染报告：## 开头渲染为小节标题，- 开头渲染为要点
-    function renderInsight(text) {
-      const parts = [];
-      for (const rawLine of text.split("\n")) {
-        const line = rawLine.trim();
-        if (!line) { continue; }
-        if (line.startsWith("## ")) {
-          parts.push('<h3 class="text-lg font-bold text-brand mt-6 mb-2">' + escapeHtml(line.slice(3)) + "</h3>");
-        } else if (line.startsWith("- ")) {
-          parts.push('<p class="pl-4">· ' + escapeHtml(line.slice(2)) + "</p>");
-        } else {
-          parts.push("<p>" + escapeHtml(line) + "</p>");
-        }
-      }
-      document.getElementById("result-content").innerHTML = parts.join("");
-      const box = document.getElementById("result");
-      box.classList.remove("hidden");
-      box.scrollIntoView({ behavior: "smooth" });
-    }
+      <label class="block text-sm font-semibold mb-1" for="platform">目标平台</label>
+      <select id="platform" class="w-full h-12 px-3 rounded-lg border border-line bg-white focus:outline-none focus:border-brand">
+        <option value="" disabled selected hidden>请选择目标平台</option>
+        <option>Amazon 美国站</option><option>Amazon 欧洲站</option><option>TikTok Shop</option>
+        <option>Shopee 东南亚</option><option>独立站</option>
+      </select>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">北美站流量大、欧洲站客单价高但需 CE 认证、东南亚站适合低价走量</p>
 
-    // 按钮加载态：禁用 + 改文案 + 显示等待提示
-    function setLoading(loading) {
-      const btn = document.getElementById("btn");
-      btn.disabled = loading;
-      btn.textContent = loading ? "生成中…" : "生成市场洞察";
-      document.getElementById("hint").classList.toggle("hidden", !loading);
-    }
+      <p class="text-sm font-semibold mb-1">目标语言</p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="lang-btn h-10 px-4 rounded-lg border border-line bg-white text-sm active" onclick="toggleLang(this)">English</button>
+        <button type="button" class="lang-btn h-10 px-4 rounded-lg border border-line bg-white text-sm active" onclick="toggleLang(this)">Español</button>
+        <button type="button" class="lang-btn h-10 px-4 rounded-lg border border-line bg-white text-sm" onclick="toggleLang(this)">Deutsch</button>
+        <button type="button" class="lang-btn h-10 px-4 rounded-lg border border-line bg-white text-sm" onclick="toggleLang(this)">Français</button>
+      </div>
+      <p id="lang-tip" class="hidden text-[13px] text-[#B45309] mt-1"></p>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">Listing 将翻译为所选语言，最多 3 种</p>
 
-    function showError(msg) {
-      const box = document.getElementById("error");
-      box.textContent = msg;
-      box.classList.remove("hidden");
-    }
+      <!-- 产品图片上传区：纯 UI，阶段 3 接识图 -->
+      <div id="upload-zone" class="border-2 border-dashed border-line rounded-lg p-4 text-center cursor-pointer hover:border-brand mb-6">
+        <div id="upload-empty">
+          <p class="text-sm">📷 拖拽图片到此处，或点击选择</p>
+          <p class="text-[13px] text-[#64748B] mt-1">支持 JPG / PNG，识图功能阶段 3 接入</p>
+        </div>
+        <div id="upload-filled" class="hidden">
+          <img id="image-preview" class="max-h-24 mx-auto rounded-lg" alt="产品图预览">
+          <button type="button" class="text-sm text-brand mt-2 underline" onclick="event.stopPropagation(); resetUpload()">重新上传</button>
+        </div>
+        <input id="image-input" type="file" accept="image/*" class="hidden">
+      </div>
 
-    function hideError() {
-      document.getElementById("error").classList.add("hidden");
-    }
+      <button class="btn-primary w-full h-12 rounded-[10px] bg-brand text-white font-medium hover:bg-[#172554]" onclick="demoAction()">🚀 开始生成</button>
 
-    // 转义 HTML，防止模型输出被当成网页代码执行
-    function escapeHtml(s) {
-      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-  </script>
+      <hr class="border-line my-6">
+
+      <!-- Agent 状态：阶段 2 全部待命 -->
+      <h2 class="font-semibold mb-3">Agent 状态</h2>
+      <ul class="text-slate-400">
+        <li class="py-1">⏳ 市场洞察</li>
+        <li class="py-1">⏳ 多语种文案</li>
+        <li class="py-1">⏳ 合规体检</li>
+        <li class="py-1">⏳ 交叉质检</li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- ═══ 右侧主区 ═══ -->
+  <main class="md:ml-80 px-4 md:px-8 py-6">
+    <div class="max-w-4xl">
+      <header class="mb-6 pl-[72px] md:pl-0">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
+          <h2 class="text-2xl font-bold text-brand">🧭 出海罗盘 SailCompass</h2>
+          <span class="text-sm text-[#64748B]">信风队 Tradewind</span>
+        </div>
+        <p class="text-slate-500 mt-1">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</p>
+      </header>
+
+      <!-- Tab 导航 -->
+      <nav class="flex gap-6 border-b border-line mb-6">
+        <button class="tab-btn" data-tab="insight" onclick="switchTab('insight')">市场洞察</button>
+        <button class="tab-btn" data-tab="listing" onclick="switchTab('listing')">多语种 Listing</button>
+        <button class="tab-btn" data-tab="compliance" onclick="switchTab('compliance')">合规体检</button>
+        <button class="tab-btn" data-tab="quality" onclick="switchTab('quality')">质检</button>
+      </nav>
+
+      <!-- 面板 1 · 市场洞察：六小节结构与 prompts/insight.md 输出一致 -->
+      <section id="panel-insight" class="tab-panel">
+        <div class="bg-white border border-line rounded-2xl card-shadow p-6">
+          <h4 class="font-bold text-brand mt-4 mb-2">目标市场判断</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>保温杯属高频刚需品类，北美与欧洲站全年稳定需求，秋冬为旺季</li><li>316 不锈钢内胆属中高端配置，适合走"品质升级"路线而非低价走量</li><li>东南亚站该品类价格敏感，与 316 内胆定位不匹配，建议优先欧美</li><li>Amazon 美国站竞争最充分，新卖家可考虑从欧洲站或独立站切细分人群</li></ul>
+          <h4 class="font-bold text-brand mt-4 mb-2">目标人群与使用场景</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>都市白领通勤族：关注颜值与保温时长，愿为品质付溢价</li><li>户外与自驾人群：看重耐用性与容量，是带茶隔设计的潜在买家</li><li>学生家长群体：注重材质安全，316 不锈钢是有效卖点</li><li>典型场景：早晨装咖啡通勤、午后泡茶、周末自驾出行</li></ul>
+          <h4 class="font-bold text-brand mt-4 mb-2">价格与竞争格局（仅定性）</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>该品类头部品牌集中度高，新卖家正面竞争压力大</li><li>316 内胆 + 茶隔配置处于中高价位段，与头部品牌主力价位段重叠</li><li>低价位段由白牌卖家占据，利润薄且易陷入价格战，不建议跟进</li><li>差异化空间在细分人群（如茶饮场景）与外观设计，而非继续卷参数</li></ul>
+          <h4 class="font-bold text-brand mt-4 mb-2">本地化要点</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>英文站标题突出 316 不锈钢与 12 小时保温，核心卖点前置</li><li>西语市场需本地化标题与描述，直接机翻会损失信任感</li><li>欧洲站文案建议体现环保与可回收理念，回收标识要清晰</li><li>图片场景建议：通勤办公与户外自驾两组，覆盖两类人群</li></ul>
+          <h4 class="font-bold text-brand mt-4 mb-2">合规初筛</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>食品接触材料认证是硬门槛：美国站需 FDA，欧洲站需 LFGB</li><li>"12 小时保温"属性能宣称，需第三方检测报告支撑，否则有下架风险</li><li>带茶隔属可拆卸小部件，需评估儿童误吞风险与警示标签</li><li>316 不锈钢材质本身合规基础良好，是认证通过的加分项</li></ul>
+          <h4 class="font-bold text-brand mt-4 mb-2">待人工核实清单</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>是否已取得 FDA / LFGB 食品接触材料检测报告，覆盖哪个市场</li><li>"12 小时保温"有无第三方实测数据，实测条件（室温、水量）是什么</li><li>茶隔部件是否做过多部件测试，是否需要加儿童警示标签</li><li>若首发欧洲站，包装回收标识是否已按目标国要求就绪</li></ul>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：数据来源、检索时间、原文摘录与置信度说明。（当前为界面演示占位，无真实数据）</p></details>
+        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="demoAction()">⬇️ 导出</button></div>
+      </section>
+
+      <!-- 面板 2 · 多语种 Listing：English + Español -->
+      <section id="panel-listing" class="tab-panel">
+        <div class="bg-white border border-line rounded-2xl card-shadow p-6 mb-4">
+          <h4 class="text-lg font-bold text-brand mb-3">English</h4>
+          <p class="text-sm text-slate-500">Title</p>
+          <p class="font-medium mb-3">Insulated Thermos Bottle — 316 Stainless Steel Interior, 12-Hour Heat Retention, Removable Tea Infuser, Leak-Proof Lid for Commute, Office &amp; Outdoor</p>
+          <p class="text-sm text-slate-500">Bullet Points</p>
+          <ul class="list-disc pl-6 space-y-1 mb-3"><li>316 STAINLESS STEEL INTERIOR — higher corrosion resistance than common 304, safer for daily drinks</li><li>12-HOUR HEAT RETENTION — keeps coffee hot from morning commute to lunch (per standard lab test)</li><li>REMOVABLE TEA INFUSER — brew loose-leaf tea anywhere; detaches in seconds for easy cleaning</li><li>LEAK-PROOF SCREW LID — toss it in your bag with confidence, no drips on your laptop</li><li>SWEAT-FREE EXTERIOR — powder-coated body stays dry and comfortable to hold</li></ul>
+          <p class="text-sm text-slate-500">Product Description</p>
+          <p class="leading-relaxed">Built for people who take their drinks seriously. The 316 stainless steel interior resists corrosion and keeps flavors clean, while double-wall vacuum insulation holds heat for up to 12 hours under standard test conditions. A removable tea infuser turns the thermos into a travel teapot. From morning coffee on the train to weekend road trips, the leak-proof lid and sweat-free exterior make it the bottle you will actually use every day.</p>
+        </div>
+        <div class="bg-white border border-line rounded-2xl card-shadow p-6">
+          <h4 class="text-lg font-bold text-brand mb-3">Español</h4>
+          <p class="text-sm text-slate-500">Title</p>
+          <p class="font-medium mb-3">Termo de Acero Inoxidable 316 — Conserva el Calor 12 Horas, Infusor de Té Removible, Tapa Antiderrames para Oficina, Viajes y Aire Libre</p>
+          <p class="text-sm text-slate-500">Bullet Points</p>
+          <ul class="list-disc pl-6 space-y-1 mb-3"><li>INTERIOR DE ACERO INOXIDABLE 316 — mayor resistencia a la corrosión que el acero 304 común</li><li>CONSERVA EL CALOR 12 HORAS — el café sigue caliente del desayuno al almuerzo (según prueba de laboratorio estándar)</li><li>INFUSOR DE TÉ REMOVIBLE — prepara té en hoja donde quieras; se desmonta en segundos</li><li>TAPA ANTIDERRAMES ROSCADA — mételo en la mochila sin preocupaciones, sin goteos</li><li>EXTERIOR SIN CONDENSACIÓN — el revestimiento se mantiene seco y cómodo en la mano</li></ul>
+          <p class="text-sm text-slate-500">Product Description</p>
+          <p class="leading-relaxed">Diseñado para quienes se toman en serio sus bebidas. El interior de acero inoxidable 316 resiste la corrosión y mantiene el sabor limpio, mientras el aislamiento al vacío de doble pared conserva el calor hasta 12 horas en condiciones de prueba estándar. El infusor de té removible convierte el termo en una tetera de viaje: del café de la mañana al té de la tarde, sin derrames y con el exterior siempre seco.</p>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：数据来源、检索时间、原文摘录与置信度说明。（当前为界面演示占位，无真实数据）</p></details>
+        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="demoAction()">⬇️ 导出</button></div>
+      </section>
+
+      <!-- 面板 3 · 合规体检：表格 + 人工复核 -->
+      <section id="panel-compliance" class="tab-panel">
+        <div class="overflow-x-auto rounded-2xl border border-line bg-white card-shadow">
+          <table class="compliance w-full text-sm border-collapse">
+            <colgroup><col style="width:25%"><col style="width:10%"><col style="width:30%"><col style="width:25%"><col style="width:10%"></colgroup>
+            <thead><tr><th>风险项</th><th>风险等级</th><th>依据</th><th>整改建议</th><th>需人工核实</th></tr></thead>
+            <tbody>
+              <tr><td>食品接触材料缺认证</td><td><span class="tag tag-red">红</span></td><td>美国站 FDA、欧洲站 LFGB 为食品接触类强制要求</td><td>送检取得报告后再上架，首发先锁定单一市场</td><td>是</td></tr>
+              <tr><td>"12 小时保温"宣称无检测支撑</td><td><span class="tag tag-red">红</span></td><td>性能宣称无依据可被平台下架或处罚</td><td>委托第三方按标准条件实测并留存报告</td><td>是</td></tr>
+              <tr><td>茶隔小部件有儿童误吞风险</td><td><span class="tag tag-yellow">黄</span></td><td>可拆卸小部件需评估窒息风险</td><td>加装警示标签与适用年龄说明</td><td>是</td></tr>
+              <tr><td>欧洲站包装回收标识未就绪</td><td><span class="tag tag-yellow">黄</span></td><td>欧盟包装指令要求包装印制回收标识</td><td>按目标国要求印制，核对包装供应商工艺</td><td>否</td></tr>
+              <tr><td>316 不锈钢材质合规基础良好</td><td><span class="tag tag-green">绿</span></td><td>316 属食品级常用材质，耐腐蚀性优于 304</td><td>保留材质检测凭证，作为 Listing 卖点展示</td><td>否</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- 人工复核区：勾选 → 可标记 → 标记后导出启用 -->
+        <div class="mt-6 p-4 bg-page border border-line rounded-lg">
+          <label class="flex items-start gap-2"><input id="review-check" type="checkbox" class="mt-1" onchange="onReviewCheck()"><span>我已逐条复核上述风险项，确认可以交付</span></label>
+          <div class="flex flex-wrap gap-3 mt-4">
+            <button id="btn-mark" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="markReviewed()">标记为已审核</button>
+            <button id="btn-export-compliance" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="demoAction()">⬇️ 导出</button>
+          </div>
+          <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：法规条款原文、适用市场、检索时间。（当前为界面演示占位，无真实数据）</p></details>
+      </section>
+
+      <!-- 面板 4 · 质检：三段固定结构 -->
+      <section id="panel-quality" class="tab-panel">
+        <div class="bg-white border border-line rounded-2xl card-shadow p-6">
+          <h4 class="font-bold text-brand mt-4 mb-2">检查结论</h4>
+          <p class="leading-relaxed">四份结果交叉核对完成。市场洞察与 Listing 的卖点口径一致（316 内胆、12 小时保温、茶隔），合规体检已识别 2 红 2 黄 1 绿共 5 项风险，整体结论可用；建议完成"待人工核实清单"后再进入上架流程。</p>
+          <h4 class="font-bold text-brand mt-4 mb-2">发现的问题</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>Listing 英文标题把"12-Hour"放在核心位置，但合规体检指出该宣称尚无第三方检测支撑，文案先行存在下架风险</li><li>市场洞察建议优先欧洲站，而合规初筛显示 LFGB 认证未取得，两处结论尚未对齐</li><li>西语版描述存在直译痕迹，个别表述可再本地化打磨</li></ul>
+          <h4 class="font-bold text-brand mt-4 mb-2">改进建议</h4>
+          <ul class="list-disc pl-6 space-y-1"><li>先补齐保温实测报告再保留"12 小时"宣称，否则统一改为"长效保温"</li><li>确定首发站点后，把洞察、Listing、合规三处的市场指向对齐</li><li>西语文案建议由母语者复核一遍后再发布</li></ul>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据与来源</summary><p class="text-sm text-slate-500 mt-2">阶段 3 接入后将展示：交叉核对所引用的各 Agent 原文位置。（当前为界面演示占位，无真实数据）</p></details>
+        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="demoAction()">⬇️ 导出</button></div>
+      </section>
+
+      <footer class="text-slate-400 text-sm mt-10 text-center">请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。</footer>
+    </div>
+  </main>
 </body>
 </html>
