@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>出海罗盘 SailCompass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind 主题：配色按视觉规格锁定
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: "#1E3A8A",
+            page: "#F8FAFC",
+            line: "#E2E8F0",
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-page text-base min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 py-10">
+
+    <!-- 页头 -->
+    <header class="mb-8">
+      <h1 class="text-2xl font-bold text-brand">出海罗盘 SailCompass</h1>
+      <p class="text-slate-500 mt-1">阶段 1 · 市场洞察（其余三个 Agent 阶段 2 上线）</p>
+    </header>
+
+    <!-- 输入卡片 -->
+    <section class="bg-white border border-line rounded-2xl p-6 mb-6">
+      <label class="block font-medium mb-2" for="product">产品名称 <span class="text-red-500">*</span></label>
+      <input id="product" type="text" placeholder="例如：不锈钢保温杯"
+             class="w-full h-12 px-3 rounded-lg border border-line mb-4 focus:outline-none focus:border-brand">
+
+      <label class="block font-medium mb-2" for="selling-points">核心卖点（选填）</label>
+      <textarea id="selling-points" rows="3" placeholder="例如：316 不锈钢内胆、12 小时保温、带茶隔"
+                class="w-full px-3 py-2 rounded-lg border border-line resize-none focus:outline-none focus:border-brand"></textarea>
+
+      <button id="btn" onclick="generate()"
+              class="mt-4 w-full h-12 rounded-[10px] bg-brand text-white font-medium disabled:opacity-60">
+        生成市场洞察
+      </button>
+      <p id="hint" class="hidden text-center text-slate-400 mt-2">生成中，约 1–3 分钟，请勿关闭页面…</p>
+    </section>
+
+    <!-- 错误提示 -->
+    <div id="error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-6"></div>
+
+    <!-- 结果卡片 -->
+    <section id="result" class="hidden bg-white border border-line rounded-2xl p-6">
+      <h2 class="text-xl font-bold text-brand mb-4">市场洞察报告</h2>
+      <div id="result-content" class="space-y-2 leading-relaxed"></div>
+    </section>
+
+    <footer class="text-slate-400 text-sm mt-8 text-center">
+      请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。
+    </footer>
+  </div>
+
+  <script>
+    // 生成市场洞察：POST /api/insight
+    async function generate() {
+      const product = document.getElementById("product").value.trim();
+      const sellingPoints = document.getElementById("selling-points").value.trim();
+      if (!product) { showError("请先填写产品名称"); return; }
+      setLoading(true);
+      hideError();
+      try {
+        const resp = await fetch("/api/insight", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ product: product, selling_points: sellingPoints }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { throw new Error(data.detail || "生成失败，请稍后重试"); }
+        renderInsight(data.insight);
+      } catch (err) {
+        showError("生成失败：" + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // 按行渲染报告：## 开头渲染为小节标题，- 开头渲染为要点
+    function renderInsight(text) {
+      const parts = [];
+      for (const rawLine of text.split("\n")) {
+        const line = rawLine.trim();
+        if (!line) { continue; }
+        if (line.startsWith("## ")) {
+          parts.push('<h3 class="text-lg font-bold text-brand mt-6 mb-2">' + escapeHtml(line.slice(3)) + "</h3>");
+        } else if (line.startsWith("- ")) {
+          parts.push('<p class="pl-4">· ' + escapeHtml(line.slice(2)) + "</p>");
+        } else {
+          parts.push("<p>" + escapeHtml(line) + "</p>");
+        }
+      }
+      document.getElementById("result-content").innerHTML = parts.join("");
+      const box = document.getElementById("result");
+      box.classList.remove("hidden");
+      box.scrollIntoView({ behavior: "smooth" });
+    }
+
+    // 按钮加载态：禁用 + 改文案 + 显示等待提示
+    function setLoading(loading) {
+      const btn = document.getElementById("btn");
+      btn.disabled = loading;
+      btn.textContent = loading ? "生成中…" : "生成市场洞察";
+      document.getElementById("hint").classList.toggle("hidden", !loading);
+    }
+
+    function showError(msg) {
+      const box = document.getElementById("error");
+      box.textContent = msg;
+      box.classList.remove("hidden");
+    }
+
+    function hideError() {
+      document.getElementById("error").classList.add("hidden");
+    }
+
+    // 转义 HTML，防止模型输出被当成网页代码执行
+    function escapeHtml(s) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>
