@@ -135,14 +135,17 @@ function generateAll() {
     if (!res.ok) {
       setButtonLoading(false);
       showErrorBar(res.data.error || "创建任务失败");
+      setHeroVisible(true);
       return;
     }
     currentTaskId = res.data.task_id;
     chatHistories = {};   // 新任务 → 追问历史清零
+    setHeroVisible(false);
     startPolling(res.data.task_id);
   }).catch(function () {
     setButtonLoading(false);
     showErrorBar("网络异常，无法连接服务，请重试");
+    setHeroVisible(true);
   });
 }
 
@@ -162,6 +165,7 @@ function pollOnce(taskId) {
     stopPolling();
     setButtonLoading(false);
     showErrorBar("请求超时，请重试");
+    setHeroVisible(true);
     return;
   }
   fetch("/api/task/" + taskId).then(function (resp) {
@@ -171,6 +175,7 @@ function pollOnce(taskId) {
       stopPolling();
       setButtonLoading(false);
       showErrorBar(res.task.error || "任务不存在");
+      setHeroVisible(true);
       return;
     }
     trackProgress(res.task.progress);
@@ -182,7 +187,7 @@ function pollOnce(taskId) {
       resetReviewGate();
       setButtonLoading(false);
       hideSlowTip();
-      if (res.task.status === "failed") { showErrorBar(res.task.error || "生成失败"); }
+      if (res.task.status === "failed") { showErrorBar(res.task.error || "生成失败"); setHeroVisible(true); }
     }
   }).catch(function () {
     // 单次网络异常：不中断轮询、不白屏，靠 5 分钟超时兜底
@@ -307,6 +312,15 @@ function showErrorBar(msg) {
 }
 function hideErrorBar() {
   document.getElementById("error-bar").classList.add("hidden");
+}
+
+// ---------- Hero 首页区块显隐：点开始生成即收起（Tab 上移聚焦进度条），任何失败回归 ----------
+function setHeroVisible(visible) {
+  document.getElementById("hero").classList.toggle("hidden", !visible);
+}
+// Hero 次按钮「看看能生成什么」：只平滑滚动到 Tab 区、不加载数据（接上 demo_cache 后再改回真示例）
+function scrollToTabs() {
+  document.getElementById("tabs").scrollIntoView({ behavior: "smooth" });
 }
 
 // ---------- 初始化 ----------

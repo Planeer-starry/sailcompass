@@ -96,3 +96,112 @@ details.evidence[open] summary::before { content: "▾"; }
   font-size: 12px; padding: 4px 10px; border-radius: 8px;
   pointer-events: none; white-space: nowrap;
 }
+/* ═══ Hero 首页区块：深蓝渐变 + 纯 CSS 网格纹理（未生成时展示） ═══ */
+
+/* 卡片主体：135° 深蓝渐变打底，上叠 24px 细线网格（repeating-linear-gradient，不引图片）；
+   高度不写死——min-height 340px 兜底，内容多时自然撑高防溢出 */
+.hero {
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(30, 58, 138, 0.18);
+  color: #FFFFFF;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 24px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 24px),
+    linear-gradient(135deg, #1E3A8A, #1E40AF);
+}
+
+/* 隐藏态：ID 选择器压过 .hero 的 display:flex，不依赖 Tailwind 注入顺序 */
+#hero.hidden { display: none; }
+
+/* ① 胶囊小标签：白底 12% 透明 */
+.hero-tag {
+  width: fit-content;
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+/* ② slogan 大标题（品牌栏负责叫什么，Hero 负责凭什么） */
+.hero-title {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #FFFFFF;
+  margin: 16px 0 8px;
+}
+
+/* ③ 副标题：白色 85% 不透明 */
+.hero-sub {
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 24px;
+}
+
+/* ④ 按钮行：并排、间距 12px */
+.hero-actions { display: flex; gap: 12px; }
+
+/* 主按钮：白底深蓝字；hover 微上浮 + 阴影加深（过渡 150ms） */
+.hero-btn-primary {
+  height: 48px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: #1E3A8A;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.15);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.hero-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.32);
+}
+
+/* 次按钮：透明底 + 1.5px 白边框 + 白字；hover 淡白底微上浮 */
+.hero-btn-ghost {
+  height: 48px;
+  padding: 0 24px;
+  border: 1.5px solid #FFFFFF;
+  border-radius: 10px;
+  background: transparent;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+.hero-btn-ghost:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ⑤ 三个信任标签：横向排布、间距 12px、白色 75%；flex-wrap 保证小屏换行不横溢 */
+.hero-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+}
+
+/* 小屏自适应（与抽屉同一 768px 断点）：高度收到 260px、内边距与字号收紧、按钮行允许换行 */
+@media (max-width: 768px) {
+  .hero { min-height: 260px; padding: 24px; }
+  .hero-title { font-size: 28px; }
+  .hero-sub { font-size: 15px; }
+  .hero-actions { flex-wrap: wrap; }
+  .hero-btn-primary, .hero-btn-ghost { height: 44px; }
+}

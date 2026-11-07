@@ -119,6 +119,22 @@
         <p class="text-slate-500 mt-1">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</p>
       </header>
 
+      <!-- Hero 首页区块：未生成时展示；点开始生成即收起（display:none，Tab 随之上移），失败时回归 -->
+      <section id="hero" class="hero mb-6">
+        <span class="hero-tag">东莞制造 · 出海第一步</span>
+        <h3 class="hero-title">让东莞的好货，说对海外的语言</h3>
+        <p class="hero-sub">填一次表单，拿到英西双语 Listing、合规风险清单和质检报告</p>
+        <div class="hero-actions">
+          <button type="button" class="hero-btn-primary" onclick="generateAll()">🚀 开始出海诊断</button>
+          <button type="button" class="hero-btn-ghost" onclick="scrollToTabs()">👀 看看能生成什么</button>
+        </div>
+        <ul class="hero-trust">
+          <li>✓ 不懂跨境术语也能用</li>
+          <li>✓ 每条风险都标依据</li>
+          <li>✓ AI 只给建议，不自动发布</li>
+        </ul>
+      </section>
+
       <!-- 生成进度：四段依次点亮；连续 60 秒无进展时显示慢提示 -->
       <div class="flex flex-wrap items-center gap-2 mb-3 text-sm">
         <span id="stage-1" class="stage stage-todo">○ 市场洞察</span>
@@ -137,8 +153,8 @@
         <button class="btn-primary shrink-0 h-10 px-4 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateAll()">重试</button>
       </div>
 
-      <!-- Tab 导航 -->
-      <nav class="flex gap-6 border-b border-line mb-6">
+      <!-- Tab 导航（id=tabs 作为 Hero 次按钮的滚动锚点） -->
+      <nav id="tabs" class="flex gap-6 border-b border-line mb-6">
         <button class="tab-btn" data-tab="insight" onclick="switchTab('insight')">市场洞察</button>
         <button class="tab-btn" data-tab="listing" onclick="switchTab('listing')">多语种 Listing</button>
         <button class="tab-btn" data-tab="compliance" onclick="switchTab('compliance')">合规体检</button>
