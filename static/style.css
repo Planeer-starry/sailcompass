@@ -69,6 +69,14 @@ details.evidence[open] summary::before { content: "▾"; }
 
 /* 证据折叠区原文：等宽 + 灰底 + 限高滚动 */
 .evidence-pre { white-space: pre-wrap; word-break: break-all; font-size: 13px; color: #475569; background: #F8FAFC; padding: 8px 10px; border-radius: 6px; margin-top: 8px; max-height: 300px; overflow-y: auto; }
+/* 识图推测黄标：黄色边框 + 输入框下方黄色提示（用户改动该字段后自动摘除） */
+.ai-uncertain { border-color: #F59E0B !important; }
+.ai-uncertain:focus { border-color: #F59E0B; }
+.ai-uncertain-tip { font-size: 13px; color: #B45309; margin: 4px 0 0; }
+
+/* 上传区状态行：识别中主色；出错橙红 */
+#upload-status.status-error { color: #B91C1C; }
+
 /* 追问区：卡片容器 + 气泡列表 */
 .chat-box { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
 .chat-list { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; padding: 2px; }

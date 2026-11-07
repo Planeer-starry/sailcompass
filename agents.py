@@ -1,4 +1,5 @@
-"""出海罗盘 · Agent 模块（3B：四个 Agent 全部实现）"""
+"""出海罗盘 · Agent 模块（3B：四个 Agent 全部实现 + 阶段 4 识图）"""
+import base64
 import json
 import os
 from pathlib import Path
@@ -212,3 +213,106 @@ def answer_question(task_id: str, tab: str, context: str, question: str) -> str:
     answer = call_llm_messages(messages, temperature=0.3)
     task_manager.append_chat(task_id, tab, question, answer)
     return answer
+
+# ---------- 阶段 4 · 产品图识别 ----------
+# vision 客户端惰性单例：与文本客户端分开（BASE_URL / KEY / MODEL 三项独立配置）
+_vision_client = None
+
+
+def vision_configured() -> bool:
+    """识图是否可用：VISION_* 三项任一缺失即视为未配置"""
+    return bool(os.getenv("VISION_BASE_URL") and os.getenv("VISION_API_KEY") and os.getenv("VISION_MODEL"))
+
+
+def _get_vision_client() -> OpenAI:
+    """获取 vision 客户端；未配置时抛明确异常「识图未配置」，不用文本模型硬顶"""
+    global _vision_client
+    if _vision_client is None:
+        if not vision_configured():
+            raise RuntimeError("识图未配置")
+        _vision_client = OpenAI(
+            base_url=os.getenv("VISION_BASE_URL"),
+            api_key=os.getenv("VISION_API_KEY"),
+            timeout=180,
+            max_retries=1,
+        )
+    return _vision_client
+
+
+def _build_image_messages(image_b64: str, mime: str) -> list:
+    """OpenAI 兼容 vision 格式：content 数组 = 文本指令 + data URL 图片"""
+    data_url = f"data:{mime};base64,{image_b64}"
+    return [
+        {"role": "system", "content": load_prompt("image")},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "请识别这张产品图，只返回 JSON。"},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ],
+        },
+    ]
+
+
+def _extract_braces(text: str) -> str:
+    """截取首个 { 到最后一个 } 之间的内容（应对模型输出前后带说明文字）"""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return ""
+    return text[start:end + 1]
+
+
+def _normalize_image_result(data: dict) -> dict:
+    """识图结果规整：保证五个键齐全、类型正确；字段为空即视为推测，不编数据"""
+    if data.get("error"):
+        return {"error": str(data["error"]).strip()}
+    points = data.get("selling_points")
+    if not isinstance(points, list):
+        points = [str(p).strip() for p in points] if points else []
+    params = data.get("params") if isinstance(data.get("params"), dict) else {}
+    uncertain = data.get("uncertain")
+    if not isinstance(uncertain, list):
+        uncertain = [str(u).strip() for u in uncertain] if uncertain else []
+    return {
+        "product": str(data.get("product", "")).strip(),
+        "category": str(data.get("category", "")).strip(),
+        "selling_points": [str(p).strip() for p in points if str(p).strip()],
+        "params": {str(k).strip(): str(v).strip() for k, v in params.items()},
+        "uncertain": [str(u).strip() for u in uncertain if str(u).strip()],
+    }
+
+
+def analyze_product_image(image_bytes: bytes, mime: str) -> dict:
+    """识图主入口：调 vision 模型识别产品图；解析失败返回 {"error": ...}，不抛 500"""
+    if not vision_configured():
+        # 路由层会转成 400 + 中文提示；此处抛出保证函数单独被调用时也有明确信号
+        raise RuntimeError("识图未配置")
+    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    messages = _build_image_messages(image_b64, mime)
+    model = os.getenv("VISION_MODEL")
+    resp = _get_vision_client().chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.1,
+    )
+    raw = resp.choices[0].message.content
+    if not raw or not raw.strip():
+        return {"error": "识图模型返回空内容，请重试"}
+    data = _parse_image_json(raw)
+    if data is None:
+        return {"error": "识图结果解析失败，请重试"}
+    return _normalize_image_result(data)
+
+
+def _parse_image_json(raw: str) -> dict | None:
+    """JSON 四级容错：直解析 → 去``` → 截取{}；全失败返回 None"""
+    candidates = [raw.strip(), _strip_code_fence(raw), _extract_braces(raw)]
+    for text in candidates:
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return None

@@ -1,9 +1,9 @@
-"""出海罗盘 SailCompass · 应用入口（3B：四段流水线 + 小海螺追问）"""
+"""出海罗盘 SailCompass · 应用入口（3B：四段流水线 + 小海螺追问 + 阶段 4 识图）"""
 import json
 from pathlib import Path
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import BackgroundTasks, FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -151,6 +151,40 @@ def chat(req: ChatRequest):
         return {"answer": answer}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"回答失败：{e}"})
+
+
+
+ALLOWED_IMAGE_TYPES = ("image/jpeg", "image/png")  # 只收 JPG / PNG
+MAX_IMAGE_BYTES = 5 * 1024 * 1024                  # 大小上限 5MB
+
+
+@app.post("/api/analyze-image")
+def analyze_image(file: UploadFile | None = File(None)):
+    """识图：multipart 接收 file 字段，调 vision 模型识别并返回结构化产品信息
+
+    同步路由（与 /api/chat 一致）：vision 调用最长 180 秒，放线程池执行，不阻塞事件循环。
+    """
+    if not agents.vision_configured():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "识图未配置，请在 .env 填写 VISION_* 三项"},
+        )
+    if file is None:
+        return JSONResponse(status_code=400, content={"error": "请选择要识别的图片"})
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        return JSONResponse(status_code=400, content={"error": "只支持 JPG / PNG 图片"})
+    image_bytes = file.file.read()
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        return JSONResponse(status_code=400, content={"error": "图片超过 5MB，请压缩后重试"})
+    try:
+        result = agents.analyze_product_image(image_bytes, file.content_type)
+    except RuntimeError as e:
+        # 「识图未配置」等运行时异常：按约定转 400 明文提示，不静默
+        return JSONResponse(status_code=400, content={"error": str(e)})
+    except Exception as e:
+        # vision 调用失败等：不抛 500，明文返回错误原因
+        return JSONResponse(content={"error": f"识图失败：{e}"})
+    return result
 
 
 if __name__ == "__main__":

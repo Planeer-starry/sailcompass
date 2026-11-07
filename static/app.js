@@ -90,37 +90,6 @@ function resetReview() {
   document.getElementById("btn-export-compliance").disabled = true;
 }
 
-// ---------- 图片上传区（纯 UI 预览，识图后续阶段接入） ----------
-function setupUpload() {
-  var zone = document.getElementById("upload-zone");
-  var input = document.getElementById("image-input");
-  zone.addEventListener("click", function () { input.click(); });
-  input.addEventListener("change", function () {
-    if (input.files[0]) { previewImage(input.files[0]); }
-  });
-  zone.addEventListener("dragover", function (e) {
-    e.preventDefault();
-    zone.classList.add("dragover");
-  });
-  zone.addEventListener("dragleave", function () { zone.classList.remove("dragover"); });
-  zone.addEventListener("drop", function (e) {
-    e.preventDefault();
-    zone.classList.remove("dragover");
-    var file = e.dataTransfer.files[0];
-    if (file && file.type.indexOf("image/") === 0) { previewImage(file); }
-    else { showToast("请选择图片文件"); }
-  });
-}
-function previewImage(file) {
-  document.getElementById("image-preview").src = URL.createObjectURL(file);
-  document.getElementById("upload-empty").classList.add("hidden");
-  document.getElementById("upload-filled").classList.remove("hidden");
-}
-function resetUpload() {
-  document.getElementById("image-input").value = "";
-  document.getElementById("upload-empty").classList.remove("hidden");
-  document.getElementById("upload-filled").classList.add("hidden");
-}
 
 // ---------- toast：顶部居中，2 秒自动消失 ----------
 var toastTimer = null;
@@ -342,7 +311,7 @@ function hideErrorBar() {
 
 // ---------- 初始化 ----------
 document.addEventListener("DOMContentLoaded", function () {
-  setupUpload();
+  // 上传识图逻辑在 image.js，独立初始化
   // 追问输入框：Enter 发送（四个 Tab 统一绑定）
   document.querySelectorAll(".chat-box").forEach(function (box) {
     var tab = box.id.replace("chat-", "");

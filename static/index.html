@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/render.js" defer></script>
   <script src="/static/app.js" defer></script>
+  <script src="/static/image.js" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
 
@@ -75,17 +76,20 @@
       <p id="lang-tip" class="hidden text-[13px] text-[#B45309] mt-1"></p>
       <p class="text-[13px] text-[#64748B] mt-1 mb-4">Listing 将翻译为所选语言，最多 3 种</p>
 
-      <!-- 产品图片上传区：纯 UI，阶段 3 接识图 -->
+      <!-- 产品图片上传区：阶段 4 识图——选中后自动调 /api/analyze-image 预填表单 -->
       <div id="upload-zone" class="border-2 border-dashed border-line rounded-lg p-4 text-center cursor-pointer hover:border-brand mb-6">
         <div id="upload-empty">
           <p class="text-sm">📷 拖拽图片到此处，或点击选择</p>
-          <p class="text-[13px] text-[#64748B] mt-1">支持 JPG / PNG，识图功能阶段 3 接入</p>
+          <p class="text-[13px] text-[#64748B] mt-1">支持 JPG / PNG，不超过 5MB，识别后自动填表</p>
         </div>
         <div id="upload-filled" class="hidden">
           <img id="image-preview" class="max-h-24 mx-auto rounded-lg" alt="产品图预览">
-          <button type="button" class="text-sm text-brand mt-2 underline" onclick="event.stopPropagation(); resetUpload()">重新上传</button>
+          <p id="image-name" class="text-[13px] text-[#64748B] mt-1 truncate"></p>
+          <p id="upload-status" class="text-[13px] text-brand mt-1 hidden"></p>
+          <button type="button" class="text-sm text-brand mt-2 underline" onclick="event.stopPropagation(); resetUpload()">重新选择</button>
         </div>
-        <input id="image-input" type="file" accept="image/*" class="hidden">
+        <p id="upload-fallback" class="hidden text-[13px] text-[#94A3B8] mt-2 mb-0">识图暂不可用，可手动填写</p>
+        <input id="image-input" type="file" accept="image/jpeg,image/png" class="hidden">
       </div>
 
       <button id="btn-generate" class="btn-primary w-full h-12 rounded-[10px] bg-brand text-white font-medium hover:bg-[#172554]" onclick="generateAll()"><span id="btn-icon" class="inline-block">🚀</span> <span id="btn-label">开始生成</span></button>
