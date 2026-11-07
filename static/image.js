@@ -1,7 +1,7 @@
 /* 出海罗盘 · 识图模块（上传产品图 → POST /api/analyze-image → 覆盖回填左侧表单） */
 
 var IMAGE_CATEGORIES = ["3C电子", "家具家居", "服装鞋帽", "皮具箱包", "户外用品", "美妆个护", "母婴玩具", "汽车配件", "五金工具", "食品饮料", "其他"];
-var IMAGE_MAX_SIZE = 5 * 1024 * 1024;          // 与后端一致：5MB 上限
+var IMAGE_MAX_SIZE = 20 * 1024 * 1024;         // 与后端一致：20MB 上限
 var IMAGE_TYPES = ["image/jpeg", "image/png"]; // 只收 JPG / PNG
 var FIELD_IDS = { product: "product", category: "category", selling_points: "selling-points", params: "params" };
 var PARAM_KEYS = ["容量", "材质", "尺寸"];     // params 子键不确定 → 标到参数输入框
@@ -48,7 +48,7 @@ function setupUncertainListeners() {
 
 // ---------- 选中文件：前端预校验 → 缩略图 + 文件名 → 自动识别 ----------
 function handleImageFile(file) {
-  if (file.size > IMAGE_MAX_SIZE) { showToast("图片超过 5MB，请压缩后重试"); return; }
+  if (file.size > IMAGE_MAX_SIZE) { showToast("图片超过 20MB，请压缩后重试"); return; }
   hideUploadFallback();
   clearUncertainMarks();
   if (previewUrl) { URL.revokeObjectURL(previewUrl); }

@@ -155,7 +155,7 @@ def chat(req: ChatRequest):
 
 
 ALLOWED_IMAGE_TYPES = ("image/jpeg", "image/png")  # 只收 JPG / PNG
-MAX_IMAGE_BYTES = 5 * 1024 * 1024                  # 大小上限 5MB
+MAX_IMAGE_BYTES = 20 * 1024 * 1024                 # 大小上限 20MB
 
 
 @app.post("/api/analyze-image")
@@ -175,7 +175,7 @@ def analyze_image(file: UploadFile | None = File(None)):
         return JSONResponse(status_code=400, content={"error": "只支持 JPG / PNG 图片"})
     image_bytes = file.file.read()
     if len(image_bytes) > MAX_IMAGE_BYTES:
-        return JSONResponse(status_code=400, content={"error": "图片超过 5MB，请压缩后重试"})
+        return JSONResponse(status_code=400, content={"error": "图片超过 20MB，请压缩后重试"})
     try:
         result = agents.analyze_product_image(image_bytes, file.content_type)
     except RuntimeError as e:
