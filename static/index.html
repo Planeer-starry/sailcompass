@@ -19,13 +19,14 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/render.js" defer></script>
   <script src="/static/app.js" defer></script>
+  <script src="/static/router.js" defer></script>
   <script src="/static/image.js" defer></script>
   <script src="/static/scene_image.js" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
 
-  <!-- 汉堡按钮：仅 ≤768px 显示 -->
-  <button class="md:hidden fixed top-4 left-4 z-[70] w-11 h-11 rounded-lg bg-white border border-line text-xl" onclick="toggleDrawer()">☰</button>
+  <!-- 汉堡按钮：仅 ≤768px 且 work 视图显示（显隐由 body 路由类控制，见 style.css） -->
+  <button id="btn-drawer" class="md:hidden fixed top-4 left-4 z-[70] w-11 h-11 rounded-lg bg-white border border-line text-xl" onclick="toggleDrawer()">☰</button>
 
   <!-- 遮罩：抽屉打开时显示，点击关闭 -->
   <div id="overlay" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="closeDrawer()"></div>
@@ -33,7 +34,96 @@
   <!-- toast：顶部居中，2 秒自动消失 -->
   <div id="toast" class="hide fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-[#1E293B] text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
 
-  <!-- ═══ 左侧侧边栏：320px，可滚动（小屏幕也能看到生成按钮） ═══ -->
+  <!-- ═══ 顶部导航条：home/settings 视图显示（work 视图用主区品牌栏，显隐由 body 路由类控制） ═══ -->
+  <nav id="topbar">
+    <div class="topbar-inner">
+      <a class="topbar-brand" href="#/">🧭 出海罗盘 SailCompass</a>
+      <div class="topbar-links">
+        <a class="topbar-link" data-nav="home" href="#/">首页</a>
+        <a class="topbar-link" data-nav="work" href="#/work">工作台</a>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <span class="topbar-team">信风队 Tradewind</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══ 首页视图（#/）：Hero + 继续横条 + 四能力卡 + 流程 + 信任区 ═══ -->
+  <div id="view-home" class="view">
+    <div class="home-wrap">
+
+      <!-- ② Hero（自工作台搬来，加高到 380px）：主按钮进工作台并开始生成；次按钮滚动到流程说明 -->
+      <section class="hero mb-6">
+        <span class="hero-tag">东莞制造 · 出海第一步</span>
+        <h3 class="hero-title">让东莞的好货，说对海外的语言</h3>
+        <p class="hero-sub">填一次表单，拿到英西双语 Listing、合规风险清单和质检报告</p>
+        <div class="hero-actions">
+          <button type="button" class="hero-btn-primary" onclick="startDiagnosis()">🚀 开始出海诊断</button>
+          <button type="button" class="hero-btn-ghost" onclick="scrollToSteps()">📖 了解怎么用</button>
+        </div>
+      </section>
+
+      <!-- 继续上次结果：生成过结果（window.lastResult 有内容）才显示，点击回工作台 -->
+      <a id="resume-bar" class="resume-bar hidden" href="#/work"></a>
+
+      <!-- ③ 四张能力卡：点击进工作台并切到对应 Tab（场景图功能位于 Listing Tab 内） -->
+      <div class="home-cards">
+        <button type="button" class="home-card" onclick="goTab('listing')">
+          <p class="home-card-title">📝 写 Listing</p>
+          <p class="home-card-line">英西双语文案</p>
+          <p class="home-card-line">对标欧美站风格</p>
+        </button>
+        <button type="button" class="home-card" onclick="goTab('compliance')">
+          <p class="home-card-title">🛡️ 合规体检</p>
+          <p class="home-card-line">上架前风险清单</p>
+          <p class="home-card-line">每条标依据</p>
+        </button>
+        <button type="button" class="home-card" onclick="goTab('quality')">
+          <p class="home-card-title">✅ 交叉质检</p>
+          <p class="home-card-line">查三份结果矛盾</p>
+          <p class="home-card-line">挑出真问题</p>
+        </button>
+        <button type="button" class="home-card" onclick="goTab('listing')">
+          <p class="home-card-title">🎨 场景图</p>
+          <p class="home-card-line">AI 生成配图</p>
+          <p class="home-card-line">带 AI 角标</p>
+        </button>
+      </div>
+
+      <!-- ④ 流程说明：三列带圆形序号（Hero 次按钮的滚动锚点） -->
+      <section id="home-steps" class="home-steps">
+        <div>
+          <span class="step-num">01</span>
+          <p class="step-title">填一次表单</p>
+          <p class="step-desc">产品名、卖点、参数，一次填完</p>
+          <p class="step-desc">不用懂跨境术语</p>
+        </div>
+        <div>
+          <span class="step-num">02</span>
+          <p class="step-title">四个 Agent 依次跑（约 30 秒）</p>
+          <p class="step-desc">洞察 → 文案 → 合规 → 质检</p>
+          <p class="step-desc">互相制约，不用盯</p>
+        </div>
+        <div>
+          <span class="step-num">03</span>
+          <p class="step-title">拿到四份产出</p>
+          <p class="step-desc">Listing、风险清单、质检报告</p>
+          <p class="step-desc">红项逐条表态后导出</p>
+        </div>
+      </section>
+
+      <!-- ⑤ 底部信任区：浅灰卡片，解释式写法 -->
+      <section class="home-trust">
+        <p class="home-trust-title">为什么可以信</p>
+        <ul>
+          <li>四个角色互相制约——文案写完合规来挑，最后质检查它们三个有没有打架</li>
+          <li>每条风险都标依据和整改动作，没有依据的标「需人工核实」</li>
+          <li>AI 只给建议，不自动发布；红项必须逐条表态才能导出</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <!-- ═══ 左侧侧边栏：320px，可滚动（小屏幕也能看到生成按钮）；work 视图外整体隐藏 ═══ -->
   <aside id="sidebar" class="fixed top-0 left-0 h-screen w-80 bg-white border-r border-line overflow-y-auto z-50 -translate-x-full md:translate-x-0">
     <div class="px-6 py-6">
       <h1 class="text-2xl font-bold text-brand mb-6">产品信息与目标市场</h1>
@@ -108,9 +198,10 @@
     </div>
   </aside>
 
-  <!-- ═══ 右侧主区 ═══ -->
-  <main class="md:ml-80 px-4 md:px-8 py-6">
+  <!-- ═══ 右侧主区（work 视图容器，#/work） ═══ -->
+  <main id="main" class="view md:ml-80 px-4 md:px-8 py-6">
     <div class="max-w-4xl">
+      <a class="back-home pl-[72px] md:pl-0" href="#/">← 返回首页</a>
       <header class="mb-6 pl-[72px] md:pl-0">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
           <h2 class="text-2xl font-bold text-brand">🧭 出海罗盘 SailCompass</h2>
@@ -118,22 +209,6 @@
         </div>
         <p class="text-slate-500 mt-1">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</p>
       </header>
-
-      <!-- Hero 首页区块：未生成时展示；点开始生成即收起（display:none，Tab 随之上移），失败时回归 -->
-      <section id="hero" class="hero mb-6">
-        <span class="hero-tag">东莞制造 · 出海第一步</span>
-        <h3 class="hero-title">让东莞的好货，说对海外的语言</h3>
-        <p class="hero-sub">填一次表单，拿到英西双语 Listing、合规风险清单和质检报告</p>
-        <div class="hero-actions">
-          <button type="button" class="hero-btn-primary" onclick="generateAll()">🚀 开始出海诊断</button>
-          <button type="button" class="hero-btn-ghost" onclick="scrollToTabs()">👀 看看能生成什么</button>
-        </div>
-        <ul class="hero-trust">
-          <li>✓ 不懂跨境术语也能用</li>
-          <li>✓ 每条风险都标依据</li>
-          <li>✓ AI 只给建议，不自动发布</li>
-        </ul>
-      </section>
 
       <!-- 生成进度：四段依次点亮；连续 60 秒无进展时显示慢提示 -->
       <div class="flex flex-wrap items-center gap-2 mb-3 text-sm">
@@ -153,7 +228,7 @@
         <button class="btn-primary shrink-0 h-10 px-4 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateAll()">重试</button>
       </div>
 
-      <!-- Tab 导航（id=tabs 作为 Hero 次按钮的滚动锚点） -->
+      <!-- Tab 导航（id=tabs 保留：Hero 次按钮原滚动锚点，现仅作语义标识） -->
       <nav id="tabs" class="flex gap-6 border-b border-line mb-6">
         <button class="tab-btn" data-tab="insight" onclick="switchTab('insight')">市场洞察</button>
         <button class="tab-btn" data-tab="listing" onclick="switchTab('listing')">多语种 Listing</button>
@@ -268,5 +343,15 @@
       <footer class="text-slate-400 text-sm mt-10 text-center">请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。</footer>
     </div>
   </main>
+
+  <!-- ═══ 设置视图（#/settings）：本次仅占位 ═══ -->
+  <div id="view-settings" class="view">
+    <div class="home-wrap">
+      <div class="settings-placeholder">
+        <p class="settings-icon">⚙️</p>
+        <p class="settings-text">模型配置功能即将上线</p>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

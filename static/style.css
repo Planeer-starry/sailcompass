@@ -96,12 +96,12 @@ details.evidence[open] summary::before { content: "▾"; }
   font-size: 12px; padding: 4px 10px; border-radius: 8px;
   pointer-events: none; white-space: nowrap;
 }
-/* ═══ Hero 首页区块：深蓝渐变 + 纯 CSS 网格纹理（未生成时展示） ═══ */
+/* ═══ Hero 区块（已搬至首页 #/）：深蓝渐变 + 纯 CSS 网格纹理 ═══ */
 
 /* 卡片主体：135° 深蓝渐变打底，上叠 24px 细线网格（repeating-linear-gradient，不引图片）；
-   高度不写死——min-height 340px 兜底，内容多时自然撑高防溢出 */
+   高度不写死——min-height 380px 兜底，内容多时自然撑高防溢出 */
 .hero {
-  min-height: 340px;
+  min-height: 380px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -115,8 +115,6 @@ details.evidence[open] summary::before { content: "▾"; }
     linear-gradient(135deg, #1E3A8A, #1E40AF);
 }
 
-/* 隐藏态：ID 选择器压过 .hero 的 display:flex，不依赖 Tailwind 注入顺序 */
-#hero.hidden { display: none; }
 
 /* ① 胶囊小标签：白底 12% 透明 */
 .hero-tag {
@@ -185,23 +183,125 @@ details.evidence[open] summary::before { content: "▾"; }
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ⑤ 三个信任标签：横向排布、间距 12px、白色 75%；flex-wrap 保证小屏换行不横溢 */
-.hero-trust {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  list-style: none;
-  margin: 24px 0 0;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 13px;
-}
 
-/* 小屏自适应（与抽屉同一 768px 断点）：高度收到 260px、内边距与字号收紧、按钮行允许换行 */
+/* Hero 小屏自适应（与抽屉同一 768px 断点）：高度收到 260px、内边距与字号收紧、按钮行允许换行 */
 @media (max-width: 768px) {
   .hero { min-height: 260px; padding: 24px; }
   .hero-title { font-size: 28px; }
   .hero-sub { font-size: 15px; }
   .hero-actions { flex-wrap: wrap; }
   .hero-btn-primary, .hero-btn-ghost { height: 44px; }
+}
+/* ═══ hash 路由三视图：view 互斥显示，body 路由类驱动侧边栏/汉堡/导航条显隐 ═══ */
+
+/* 视图容器：默认隐藏，仅当前路由的视图显示 */
+.view { display: none; }
+.view.view-active { display: block; }
+
+/* 非 work 视图：侧边栏 + 汉堡按钮整体隐藏（display 压过抽屉 translate，main 已随视图隐藏，页面自然全宽） */
+body:not(.route-work) #sidebar,
+body:not(.route-work) #btn-drawer { display: none; }
+
+/* work 视图：隐藏顶部导航条（用主区内现有品牌栏，两者字号/色值/分隔线一致） */
+body.route-work #topbar { display: none; }
+
+/* ═══ 顶部导航条（home/settings 视图共用）：品牌字号/色值对齐工作台品牌栏（24px/700/#1E3A8A） ═══ */
+#topbar { background: #FFFFFF; border-bottom: 1px solid #E2E8F0; }
+.topbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar-brand { font-size: 24px; font-weight: 700; color: #1E3A8A; text-decoration: none; white-space: nowrap; }
+.topbar-links { display: flex; align-items: center; gap: 20px; }
+.topbar-link { font-size: 14px; color: #64748B; text-decoration: none; }
+.topbar-link:hover { color: #1E3A8A; }
+.topbar-link.active { color: #1E3A8A; font-weight: 600; }
+.topbar-divider { width: 1px; height: 16px; background: #E2E8F0; }
+.topbar-team { font-size: 14px; color: #64748B; white-space: nowrap; }
+
+/* ═══ 首页（#/）与设置占位（#/settings）共用容器：全宽、最大 1100px 居中、padding 32px ═══ */
+.home-wrap { max-width: 1100px; margin: 0 auto; padding: 32px; }
+
+/* 继续上次结果横条：有结果才显示；ID 压过 .resume-bar 的 display，不依赖 Tailwind 注入顺序（沿用原 #hero.hidden 手法） */
+.resume-bar {
+  display: block;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-left: 4px solid #1E3A8A;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  color: #1E3A8A;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.resume-bar:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12); }
+#resume-bar.hidden { display: none; }
+
+/* 四张能力卡：两行两列（间距 16px），白底圆角 16px + 1px #E2E8F0，hover 上浮 2px + 阴影加深 */
+.home-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 32px; }
+.home-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.home-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15, 23, 42, 0.14); }
+.home-card-title { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 8px; }
+.home-card-line { font-size: 14px; color: #64748B; line-height: 1.7; margin: 0; }
+
+/* 流程说明：三列带圆形序号（40px 主色底白字），下方两行说明 */
+.home-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1E3A8A;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.step-title { font-size: 16px; font-weight: 600; color: #0F172A; margin: 0 0 6px; }
+.step-desc { font-size: 14px; color: #64748B; line-height: 1.7; margin: 0; }
+
+/* 底部信任区：浅灰卡片 + 「·」列表（解释式长句，非 Hero 短标签） */
+.home-trust { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 24px; }
+.home-trust-title { font-size: 16px; font-weight: 700; color: #0F172A; margin: 0 0 12px; }
+.home-trust ul { list-style: none; margin: 0; padding: 0; }
+.home-trust li { position: relative; padding-left: 20px; font-size: 14px; color: #475569; line-height: 1.8; }
+.home-trust li::before { content: "·"; position: absolute; left: 6px; font-weight: 700; color: #1E3A8A; }
+
+/* 工作台「← 返回首页」链接：12px 灰色（pl-[72px] 为小屏避开汉堡按钮，与品牌栏同一手法） */
+.back-home { display: inline-block; font-size: 12px; color: #64748B; text-decoration: none; margin-bottom: 12px; }
+.back-home:hover { color: #1E3A8A; }
+
+/* 设置页占位：居中白卡 */
+.settings-placeholder { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); padding: 80px 32px; text-align: center; }
+.settings-icon { font-size: 40px; margin: 0 0 12px; }
+.settings-text { font-size: 16px; color: #64748B; margin: 0; }
+
+/* 首页/导航条小屏自适应（修正 1：必做项）：能力卡与流程降单列、导航条防溢出（队名与竖线隐藏） */
+@media (max-width: 768px) {
+  .home-wrap { padding: 16px; }
+  .home-cards { grid-template-columns: 1fr; }
+  .home-steps { grid-template-columns: 1fr; }
+  .topbar-inner { padding: 0 16px; }
+  .topbar-brand { font-size: 18px; }
+  .topbar-team, .topbar-divider { display: none; }
 }
