@@ -247,4 +247,5 @@ def generate_image(req: GenerateImageRequest):
 
 if __name__ == "__main__":
     # 启动方式：python main.py（内部就是 uvicorn）
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # 绑 0.0.0.0：部署到云服务器后外网（浏览器）才能访问；绑 127.0.0.1 只有服务器自己能访问
+    uvicorn.run(app, host="0.0.0.0", port=8000)
