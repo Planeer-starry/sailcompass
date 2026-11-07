@@ -6,7 +6,7 @@ function renderMarkdown(elId, text) {
   document.getElementById(elId).innerHTML = marked.parse(safe);
 }
 
-// ---------- 合规表格动态生成（单元格全量转义，模型输出不执行） ----------
+// ---------- 合规表格动态生成（单元格全量转义，模型输出不执行；第 6 列「处理状态」单项审核） ----------
 function renderCompliance(rows) {
   var box = document.getElementById("compliance-content");
   if (!rows || rows.length === 0) {
@@ -15,21 +15,33 @@ function renderCompliance(rows) {
   }
   var head = '<div class="overflow-x-auto rounded-2xl border border-line bg-white card-shadow">' +
     '<table class="compliance w-full text-sm border-collapse">' +
-    '<colgroup><col style="width:25%"><col style="width:10%"><col style="width:30%"><col style="width:25%"><col style="width:10%"></colgroup>' +
-    '<thead><tr><th>风险项</th><th>风险等级</th><th>依据</th><th>整改建议</th><th>需人工核实</th></tr></thead><tbody>';
+    '<colgroup><col style="width:20%"><col style="width:8%"><col style="width:26%"><col style="width:22%"><col style="width:8%"><col style="width:16%"></colgroup>' +
+    '<thead><tr><th>风险项</th><th>风险等级' + termTag("风险等级（红黄绿）", true, "term-down") + '</th><th>依据</th><th>整改建议</th><th>需人工核实' + termTag("需人工核实", true, "term-down") + "</th>" +
+    '<th title="已整改=我改了文案或补了材料；不适用=这条不适用我的情况；已确认=知道风险但决定不改">处理状态</th></tr></thead><tbody>';
   var body = "";
-  rows.forEach(function (r) {
+  rows.forEach(function (r, i) {
     var cls = r.risk_level === "红" ? "tag-red" : r.risk_level === "黄" ? "tag-yellow" : "tag-green";
     body += "<tr><td>" + escapeHtml(r.item) + '</td><td><span class="tag ' + cls + '">' +
       escapeHtml(r.risk_level) + "</span></td><td>" + escapeHtml(r.basis) + "</td><td>" +
-      escapeHtml(r.action) + "</td><td>" + escapeHtml(r.need_verify) + "</td></tr>";
+      escapeHtml(r.action) + "</td><td>" + escapeHtml(r.need_verify) + "</td><td>" +
+      statusSelectHtml(i, r.action_status || "待处理") + "</td></tr>";
   });
-  box.innerHTML = head + body + "</tbody></table></div>";
+  box.innerHTML = head + body + "</tbody></table></div>" +
+    '<p class="compliance-note">红项需全部表态后才能审核通过；黄项和绿项不强制。</p>';
+}
+
+// ---------- 处理状态 select：data-index 定位行，由容器级事件委托读取（app.js 挂载一次），位置无关 ----------
+function statusSelectHtml(index, current) {
+  var opts = "";
+  ["待处理", "已整改", "不适用", "已确认"].forEach(function (s) {
+    opts += '<option value="' + s + '"' + (s === current ? " selected" : "") + ">" + s + "</option>";
+  });
+  return '<select class="status-select" data-index="' + index + '">' + opts + "</select>";
 }
 
 // ---------- 四 Tab 全量渲染 + 证据折叠区填原文 ----------
 function renderAllResults(result) {
-  if (result.insight) { renderMarkdown("insight-content", result.insight); }
+  if (result.insight) { renderMarkdown("insight-content", result.insight); markInsightTerms(); }
   if (result.listing) { renderMarkdown("listing-content", result.listing); }
   if (result.compliance) { renderCompliance(result.compliance); }
   if (result.quality) { renderMarkdown("quality-content", result.quality); }
@@ -71,12 +83,18 @@ function appendChatError(tab, msg) {
   list.scrollTop = list.scrollHeight;
 }
 
-// ---------- 导出内容生成：合规 rows 转 Markdown 表格 ----------
+// ---------- 导出内容生成：合规 rows 转 Markdown 表格（含处理状态列 + 红黄统计行） ----------
 function rowsToMarkdown(rows) {
-  var md = "| 风险项 | 风险等级 | 依据 | 整改建议 | 需人工核实 |\n|---|---|---|---|---|\n";
+  var md = "| 风险项 | 风险等级 | 依据 | 整改建议 | 需人工核实 | 处理状态 |\n|---|---|---|---|---|---|\n";
+  var redTotal = 0, redDone = 0, yellowTotal = 0, yellowDone = 0;
   rows.forEach(function (r) {
-    md += "| " + r.item + " | " + r.risk_level + " | " + r.basis + " | " + r.action + " | " + r.need_verify + " |\n";
+    var status = r.action_status || "待处理";
+    var done = status !== "待处理";
+    if (r.risk_level === "红") { redTotal++; if (done) { redDone++; } }
+    else if (r.risk_level === "黄") { yellowTotal++; if (done) { yellowDone++; } }
+    md += "| " + r.item + " | " + r.risk_level + " | " + r.basis + " | " + r.action + " | " + r.need_verify + " | " + status + " |\n";
   });
+  md += "\n红项 " + redTotal + " 条，已处理 " + redDone + " 条；黄项 " + yellowTotal + " 条，已处理 " + yellowDone + " 条。\n";
   return md;
 }
 

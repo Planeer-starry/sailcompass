@@ -1,11 +1,12 @@
 """出海罗盘 SailCompass · 应用入口（3B：四段流水线 + 小海螺追问 + 阶段 4 识图）"""
 import json
+import time
 from pathlib import Path
 
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -26,14 +27,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class NoCacheStaticFiles(StaticFiles):
+    """静态文件禁用缓存：开发期改完立即生效，部署后也不会拿到旧版。
+
+    no-cache = 可以缓存但每次使用前必须向服务器确认（有 304 协商，不全量重下）。
+    file_response 在本机 starlette 为同步方法，覆盖它可同时给 200 与 304 加头。
+    """
+
+    def file_response(self, *args, **kwargs):
+        resp = super().file_response(*args, **kwargs)
+        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return resp
+
+
 # 静态资源只挂子路径，绝不挂根路径（避免吞掉 /api/* 路由）
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.mount("/static", NoCacheStaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+# 静态资源版本号：进程启动时刻（模块级常量）。重启即变 → 链接变 → 浏览器强制拉新文件；部署本来就要重启，等于"部署即生效"，零维护
+BUILD_ID = str(int(time.time()))
 
 
 @app.get("/")
 def index():
-    """首页：显式路由返回 index.html（不用 StaticFiles 挂根路径）"""
-    return FileResponse(BASE_DIR / "static" / "index.html")
+    """首页：读 index.html 并把 __BUILD_ID__ 占位符替换为启动版本号
+
+    html 本身也加 no-cache（与静态资源同策略）：防止浏览器导航缓存钉住旧版本号链接。
+    """
+    html = (BASE_DIR / "static" / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(
+        html.replace("__BUILD_ID__", BUILD_ID),
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
 
 
 @app.get("/api/health")

@@ -1,7 +1,7 @@
-/* 出海罗盘 · hash 路由（三视图切换：#/ 首页、#/work 工作台、#/settings 设置占位；不拆多个 HTML 文件） */
+/* 出海罗盘 · hash 路由（四视图切换：#/ 首页、#/work 工作台、#/help 帮助、#/settings 设置占位；不拆多个 HTML 文件） */
 
 // ---------- 视图注册表：hash 键 → 容器 id；work 视图直接复用现有 #main ----------
-var ROUTES = { home: "view-home", work: "main", settings: "view-settings" };
+var ROUTES = { home: "view-home", work: "main", help: "view-help", settings: "view-settings" };
 
 // ---------- 解析 hash：空或 "#/" → 首页；合法键返回键名；非法返回 null ----------
 function parseHash() {
@@ -18,10 +18,11 @@ function applyRoute() {
     history.replaceState(null, "", location.pathname + "#/");
     route = "home";
   }
+  if (route === "help") { renderHelp(); }   // 首次切到帮助页时填充内容（help.js 内部标志位保证只填一次）
   Object.keys(ROUTES).forEach(function (key) {
     document.getElementById(ROUTES[key]).classList.toggle("view-active", key === route);
   });
-  document.body.classList.remove("route-home", "route-work", "route-settings");
+  document.body.classList.remove("route-home", "route-work", "route-help", "route-settings");
   document.body.classList.add("route-" + route);
   updateNavActive(route);
   updateResumeBar();

@@ -31,7 +31,7 @@ function switchTab(name) {
   // 切 Tab 时从 window.lastResult 重新渲染目标面板；追问气泡从本地历史重绘
   var r = window.lastResult;
   if (!r) { return; }
-  if (name === "insight" && r.insight) { renderMarkdown("insight-content", r.insight); }
+  if (name === "insight" && r.insight) { renderMarkdown("insight-content", r.insight); markInsightTerms(); }
   else if (name === "listing" && r.listing) { renderMarkdown("listing-content", r.listing); }
   else if (name === "compliance" && r.compliance) { renderCompliance(r.compliance); }
   else if (name === "quality" && r.quality) { renderMarkdown("quality-content", r.quality); }
@@ -71,11 +71,10 @@ function hideLangTip() {
   document.getElementById("lang-tip").classList.add("hidden");
 }
 
-// ---------- 合规审核联动：勾选 → 可标记 → 标记后导出启用；取消勾选全部复位 ----------
+// ---------- 合规审核联动：勾选 + 红项全部表态 → 可标记 → 标记后导出启用；取消勾选或改行状态即复位 ----------
 function onReviewCheck() {
-  var checked = document.getElementById("review-check").checked;
-  document.getElementById("btn-mark").disabled = !checked;
-  if (!checked) { resetReview(); }
+  if (!document.getElementById("review-check").checked) { resetReview(); }
+  updateReviewGate();
 }
 function markReviewed() {
   var btn = document.getElementById("btn-mark");
@@ -235,10 +234,41 @@ function updateStages(task) {
   }
 }
 
+// ---------- 单项审核：写入行处理状态（纯内存，不发请求）；已审核后改动 → 重置未审核、导出变灰（勾选态保留） ----------
+function setRowStatus(index, value) {
+  var rows = window.lastResult && window.lastResult.compliance;
+  if (!rows || !rows[index]) { return; }
+  rows[index].action_status = value;
+  resetReview();
+  updateReviewGate();
+}
+
+// ---------- 待表态红项数：action_status 缺省或「待处理」都算未表态 ----------
+function countPendingRed() {
+  var rows = window.lastResult && window.lastResult.compliance;
+  if (!rows) { return 0; }
+  var n = 0;
+  rows.forEach(function (r) {
+    if (r.risk_level === "红" && (r.action_status || "待处理") === "待处理") { n++; }
+  });
+  return n;
+}
+
+// ---------- 闸口重算：红字提示待表态数（N>0 即显示，不联动勾选）；按钮可点 = 已勾选 且 红项全部表态 ----------
+function updateReviewGate() {
+  var n = countPendingRed();
+  var tip = document.getElementById("red-pending-tip");
+  tip.textContent = "还有 " + n + " 条红项未表态";
+  tip.classList.toggle("hidden", n === 0);
+  var checked = document.getElementById("review-check").checked;
+  document.getElementById("btn-mark").disabled = !checked || n > 0;
+}
+
 // ---------- 审核闸口：新结果渲染完成那一刻重置一次，不在轮询帧里反复重置 ----------
 function resetReviewGate() {
   document.getElementById("review-check").checked = false;
   resetReview();
+  updateReviewGate();   // 新结果无 action_status → 红字显示 N 起引导作用（无红项则不显示）
 }
 
 // ---------- 导出：当前 Tab 内容下载为 .md（Blob + a.download） ----------
@@ -316,6 +346,12 @@ function hideErrorBar() {
 // ---------- 初始化 ----------
 document.addEventListener("DOMContentLoaded", function () {
   // 上传识图逻辑在 image.js，独立初始化
+  // 合规「处理状态」select：容器级事件委托挂载一次（innerHTML 重渲染不丢；data-index 定位行，位置无关）
+  document.getElementById("compliance-content").addEventListener("change", function (e) {
+    if (e.target.classList.contains("status-select")) {
+      setRowStatus(Number(e.target.dataset.index), e.target.value);
+    }
+  });
   // 追问输入框：Enter 发送（四个 Tab 统一绑定）
   document.querySelectorAll(".chat-box").forEach(function (box) {
     var tab = box.id.replace("chat-", "");

@@ -16,12 +16,15 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/render.js" defer></script>
-  <script src="/static/app.js" defer></script>
-  <script src="/static/router.js" defer></script>
-  <script src="/static/image.js" defer></script>
-  <script src="/static/scene_image.js" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/help.css?v=__BUILD_ID__">
+  <script src="/static/glossary.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/render.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/app.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/router.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/image.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/scene_image.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/help.js?v=__BUILD_ID__" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
 
@@ -41,6 +44,7 @@
       <div class="topbar-links">
         <a class="topbar-link" data-nav="home" href="#/">首页</a>
         <a class="topbar-link" data-nav="work" href="#/work">工作台</a>
+        <a class="topbar-link" data-nav="help" href="#/help">帮助</a>
         <span class="topbar-divider" aria-hidden="true"></span>
         <span class="topbar-team">信风队 Tradewind</span>
       </div>
@@ -146,18 +150,20 @@
         <option>3C电子</option><option>家具家居</option><option>服装鞋帽</option><option>皮具箱包</option>
         <option>户外用品</option><option>美妆个护</option><option>母婴玩具</option><option>汽车配件</option>
         <option>五金工具</option><option>食品饮料</option><option selected>其他</option>
+        <option value="帮我推荐">🤔 帮我推荐</option>
       </select>
-      <p class="text-[13px] text-[#64748B] mt-1 mb-4">决定对标的市场与竞品</p>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">拿不准就选『帮我推荐』，它会给你建议</p>
 
-      <label class="block text-sm font-semibold mb-1" for="platform">目标平台</label>
+      <label class="block text-sm font-semibold mb-1" for="platform">目标平台 <span class="term term-q" data-tip="在哪个网站或渠道卖货，如亚马逊、TikTok 或独立站">?</span></label>
       <select id="platform" class="w-full h-12 px-3 rounded-lg border border-line bg-white focus:outline-none focus:border-brand">
         <option value="" disabled selected hidden>请选择目标平台</option>
         <option>Amazon 美国站</option><option>Amazon 欧洲站</option><option>TikTok Shop</option>
         <option>Shopee 东南亚</option><option>独立站</option>
+        <option value="帮我推荐">🤔 帮我推荐</option>
       </select>
-      <p class="text-[13px] text-[#64748B] mt-1 mb-4">北美站流量大、欧洲站客单价高但需 CE 认证、东南亚站适合低价走量</p>
+      <p class="text-[13px] text-[#64748B] mt-1 mb-4">不知道发哪个站就选『帮我推荐』</p>
 
-      <p class="text-sm font-semibold mb-1">目标语言</p>
+      <p class="text-sm font-semibold mb-1">目标语言 <span class="term term-q" data-tip="商品详情页要翻译成哪些语言，最多选 3 种">?</span></p>
       <div class="flex flex-wrap gap-2">
         <button type="button" class="lang-btn h-10 px-4 rounded-lg border border-line bg-white text-sm active" onclick="toggleLang(this)">English</button>
         <button type="button" class="lang-btn h-10 px-4 rounded-lg border border-line bg-white text-sm active" onclick="toggleLang(this)">Español</button>
@@ -202,6 +208,7 @@
   <main id="main" class="view md:ml-80 px-4 md:px-8 py-6">
     <div class="max-w-4xl">
       <a class="back-home pl-[72px] md:pl-0" href="#/">← 返回首页</a>
+      <a class="back-home back-help" href="#/help">❓ 帮助</a>
       <header class="mb-6 pl-[72px] md:pl-0">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
           <h2 class="text-2xl font-bold text-brand">🧭 出海罗盘 SailCompass</h2>
@@ -306,9 +313,10 @@
         <!-- 人工复核区：勾选 → 可标记 → 标记后导出启用 -->
         <div class="mt-6 p-4 bg-page border border-line rounded-lg">
           <label class="flex items-start gap-2"><input id="review-check" type="checkbox" class="mt-1" onchange="onReviewCheck()"><span>我已逐条复核上述风险项，确认可以交付</span></label>
-          <div class="flex flex-wrap gap-3 mt-4">
+          <div class="flex flex-wrap items-center gap-3 mt-4">
             <button id="btn-mark" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="markReviewed()">标记为已审核</button>
             <button id="btn-export-compliance" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="exportTab('compliance')">⬇️ 导出</button>
+            <span id="red-pending-tip" class="red-pending-tip hidden"></span>
           </div>
           <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
         </div>
@@ -343,6 +351,9 @@
       <footer class="text-slate-400 text-sm mt-10 text-center">请始终通过 http://127.0.0.1:8000 访问本页面，不要双击 html 文件直接打开。</footer>
     </div>
   </main>
+
+  <!-- ═══ 帮助视图（#/help）：空容器，内容由 help.js 注入（保 index.html 行数红线） ═══ -->
+  <section id="view-help" class="view"></section>
 
   <!-- ═══ 设置视图（#/settings）：本次仅占位 ═══ -->
   <div id="view-settings" class="view">

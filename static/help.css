@@ -1,0 +1,166 @@
+/* 出海罗盘 · 帮助系统样式（术语气泡 / 首次引导条 / 帮助页；独立成文件，style.css 已近 400 行红线） */
+
+/* ═══ 术语标记：.term = 术语文本（虚线下划线，hover 出气泡）；.term-q = 小圆标问号（label/表头后） ═══ */
+.term {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dashed #94A3B8;
+}
+.term-q {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border-bottom: none;
+  border-radius: 50%;
+  background: #E2E8F0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 2px;
+}
+
+/* 气泡箭头（朝下）：黑底三角，与气泡一起 hover 显示 */
+.term::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1E293B;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+/* 气泡本体：黑底白字、max-width 240px、圆角 8px、z-index 压过侧边栏与 toast */
+.term::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%);
+  background: #1E293B;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  padding: 8px 12px;
+  border-radius: 8px;
+  max-width: 240px;
+  width: max-content;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.term:hover::before,
+.term:hover::after { opacity: 1; }
+
+/* 表头术语变体：气泡朝下弹（thead 贴近 overflow 滚动容器顶部，朝上会被裁掉） */
+.term-down::before { bottom: auto; top: calc(100% + 3px); border-top-color: transparent; border-bottom-color: #1E293B; }
+.term-down::after { bottom: auto; top: calc(100% + 9px); }
+
+/* ═══ 首次引导条：浅蓝横条 + 三步横排（小屏 wrap 换行）+ 知道了按钮 ═══ */
+.guide-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-left: 4px solid #1E3A8A;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+.guide-title { font-size: 15px; font-weight: 700; color: #1E3A8A; margin: 0; white-space: nowrap; }
+.guide-steps { display: flex; flex-wrap: wrap; gap: 6px 24px; flex: 1; min-width: 260px; }
+.guide-steps p { font-size: 14px; color: #334155; line-height: 1.7; margin: 0; }
+.guide-steps a { color: #1E3A8A; font-weight: 500; text-decoration: none; border-bottom: 1px dashed #1E3A8A; }
+.guide-steps a:hover { border-bottom-style: solid; }
+.guide-close {
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: #1E3A8A;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+.guide-close:hover { background: #172554; }
+
+/* ═══ 帮助页（#/help）：内容 help.js 注入，本文件只管排版 ═══ */
+.help-wrap { max-width: 860px; margin: 0 auto; padding: 32px; }
+.help-head { margin-bottom: 24px; }
+.help-head h1 { font-size: 28px; font-weight: 700; color: #1E3A8A; margin: 0 0 6px; }
+.help-head p { font-size: 14px; color: #64748B; margin: 0; }
+.help-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+.help-card h2 { font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 16px; }
+
+/* 三步上手：三列带圆形序号（与首页流程同一视觉语言） */
+.help-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.help-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1E3A8A;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.help-step-title { font-size: 16px; font-weight: 600; color: #0F172A; margin: 0 0 6px; }
+.help-step-desc { font-size: 14px; color: #64748B; line-height: 1.7; margin: 0; }
+
+/* 术语表：两列表格，术语列不换行加粗 */
+.glossary { width: 100%; border-collapse: collapse; font-size: 14px; }
+.glossary th { text-align: left; padding: 8px 12px; background: #F8FAFC; color: #334155; font-weight: 600; border-bottom: 1px solid #E2E8F0; }
+.glossary td { padding: 10px 12px; border-bottom: 1px solid #E2E8F0; vertical-align: top; color: #475569; line-height: 1.6; }
+.glossary td:first-child { white-space: nowrap; color: #0F172A; font-weight: 600; }
+.glossary tr:last-child td { border-bottom: none; }
+
+/* 常见问题：原生 details 折叠（不引库），自定义 ▸/▾ 箭头 */
+.help-faq { border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; }
+.help-faq:last-child { margin-bottom: 0; }
+.help-faq summary { cursor: pointer; font-size: 15px; font-weight: 600; color: #334155; list-style: none; }
+.help-faq summary::-webkit-details-marker { display: none; }
+.help-faq summary::before { content: "▸"; margin-right: 8px; color: #1E3A8A; }
+.help-faq[open] summary::before { content: "▾"; }
+.help-faq p { font-size: 14px; color: #64748B; line-height: 1.7; margin: 10px 0 0; }
+
+/* 底部兜底：浅灰卡片 */
+.help-footer {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 14px;
+  color: #475569;
+}
+
+/* 帮助页小屏自适应：三步降单列、容器收边距 */
+@media (max-width: 768px) {
+  .help-wrap { padding: 16px; }
+  .help-steps { grid-template-columns: 1fr; }
+}
