@@ -20,6 +20,7 @@
   <script src="/static/render.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/image.js" defer></script>
+  <script src="/static/scene_image.js" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
 
@@ -168,6 +169,34 @@
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-listing" class="evidence-pre">（生成后显示原文）</pre></details>
         <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('listing')">⬇️ 导出</button></div>
+
+        <!-- 场景图生成（阶段 5）：独立卡片；未配置灰字禁用、失败显示示例图，均不影响其他区域 -->
+        <div class="mt-6 p-6 bg-white border border-line rounded-2xl card-shadow">
+          <p class="font-semibold mb-3">🎨 场景图生成</p>
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            <button type="button" class="scene-btn h-10 px-4 rounded-lg border border-line bg-white text-sm active" data-scene="outdoor" disabled onclick="selectScene(this)">🌲 户外</button>
+            <button type="button" class="scene-btn h-10 px-4 rounded-lg border border-line bg-white text-sm" data-scene="home" disabled onclick="selectScene(this)">🏠 家居</button>
+            <button type="button" class="scene-btn h-10 px-4 rounded-lg border border-line bg-white text-sm" data-scene="gift" disabled onclick="selectScene(this)">🎁 礼品</button>
+            <button id="btn-gen-image" class="btn-primary h-10 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" disabled onclick="generateSceneImage()"><span id="btn-gen-image-icon" class="inline-block">🎨</span> <span id="btn-gen-image-label">生成场景图</span></button>
+          </div>
+          <p id="scene-status" class="text-[13px] text-brand hidden"></p>
+          <p id="scene-unconfigured" class="text-[13px] text-[#94A3B8] hidden">生图未配置，可在设置里填写</p>
+          <div id="scene-result" class="hidden mt-3">
+            <div class="scene-wrap">
+              <img id="scene-img" class="scene-img" alt="产品场景图">
+              <span id="scene-badge" class="ai-badge">AI 生成 · 需人工审核</span>
+            </div>
+            <div class="flex gap-3 mt-3">
+              <button id="btn-download-image" class="btn-primary h-11 px-6 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="downloadSceneImage()">⬇️ 下载</button>
+              <button id="btn-regen-image" class="btn-primary h-11 px-6 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateSceneImage()">重新生成</button>
+            </div>
+          </div>
+          <div id="scene-error" class="hidden mt-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+            <span id="scene-error-msg" class="text-sm"></span>
+            <button class="btn-primary shrink-0 h-10 px-4 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateSceneImage()">重试</button>
+          </div>
+        </div>
+
         <div id="chat-listing" class="chat-box mt-6">
           <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
           <div class="chat-list"></div>

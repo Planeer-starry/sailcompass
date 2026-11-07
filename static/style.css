@@ -84,3 +84,15 @@ details.evidence[open] summary::before { content: "▾"; }
 .chat-user { align-self: flex-end; background: #1E3A8A; color: #FFFFFF; border-bottom-right-radius: 4px; }
 .chat-assistant { align-self: flex-start; background: #F1F5F9; color: #334155; border-bottom-left-radius: 4px; }
 .chat-assistant.error { background: #FEF2F2; color: #B91C1C; }
+/* 场景图生成卡片：场景按钮选中态（与目标语言按钮同一视觉语言） */
+.scene-btn.active { background-color: #1E3A8A; border-color: #1E3A8A; color: #FFFFFF; }
+
+/* 场景图展示：最大宽 480px、圆角 16px；AI 角标半透明叠在右下角（红线：AI 生成必标，不伪装实拍） */
+.scene-wrap { position: relative; display: inline-block; max-width: 480px; }
+.scene-img { display: block; max-width: 480px; width: 100%; border-radius: 16px; }
+.ai-badge {
+  position: absolute; right: 12px; bottom: 12px;
+  background: rgba(15, 23, 42, 0.62); color: #FFFFFF;
+  font-size: 12px; padding: 4px 10px; border-radius: 8px;
+  pointer-events: none; white-space: nowrap;
+}

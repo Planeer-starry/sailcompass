@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import agents
+import image_gen
 import task_manager
 
 # 项目根目录：保证在任意工作目录启动都能找到 static / prompts
@@ -37,8 +38,12 @@ def index():
 
 @app.get("/api/health")
 def health():
-    """健康检查：只检查服务存活，不依赖 .env 配置"""
-    return {"ok": True}
+    """健康检查：存活 + 各能力配置状态（前端据此禁用未配置的功能，阶段 6 可复用）"""
+    return {
+        "ok": True,
+        "vision_configured": agents.vision_configured(),
+        "image_configured": image_gen.image_configured(),
+    }
 
 
 class GenerateRequest(BaseModel):
@@ -185,6 +190,34 @@ def analyze_image(file: UploadFile | None = File(None)):
         # vision 调用失败等：不抛 500，明文返回错误原因
         return JSONResponse(content={"error": f"识图失败：{e}"})
     return result
+
+
+class GenerateImageRequest(BaseModel):
+    """场景图生成请求：产品名 + 场景（白名单 outdoor / home / gift）"""
+    product: str
+    scene: str
+
+
+IMAGE_SCENES = ("outdoor", "home", "gift")  # 与 image_gen.SCENE_WORDS 键保持一致
+
+
+@app.post("/api/generate-image")
+def generate_image(req: GenerateImageRequest):
+    """场景图生成：同步路由（生图约 10–30 秒，放线程池执行，不阻塞事件循环）"""
+    if req.scene not in IMAGE_SCENES:
+        return JSONResponse(status_code=400, content={"error": "非法场景：" + req.scene})
+    if not req.product.strip():
+        return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
+    if not image_gen.image_configured():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "生图未配置，请在设置里填写 IMAGE_*"},
+        )
+    try:
+        return image_gen.generate_scene_image(req.product.strip(), req.scene)
+    except RuntimeError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
 
 
 if __name__ == "__main__":
