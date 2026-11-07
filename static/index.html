@@ -65,8 +65,13 @@
       <!-- 继续上次结果：生成过结果（window.lastResult 有内容）才显示，点击回工作台 -->
       <a id="resume-bar" class="resume-bar hidden" href="#/work"></a>
 
-      <!-- ③ 四张能力卡：点击进工作台并切到对应 Tab（场景图功能位于 Listing Tab 内） -->
+      <!-- ③ 四张能力卡：与四个 Tab 一一对应（按流水线顺序）；场景图功能在 Listing 页内，不单独占卡 -->
       <div class="home-cards">
+        <button type="button" class="home-card" onclick="goTab('insight')">
+          <p class="home-card-title">📊 市场洞察</p>
+          <p class="home-card-line">市场判断 / 人群场景</p>
+          <p class="home-card-line">本地化要点</p>
+        </button>
         <button type="button" class="home-card" onclick="goTab('listing')">
           <p class="home-card-title">📝 写 Listing</p>
           <p class="home-card-line">英西双语文案</p>
@@ -81,11 +86,6 @@
           <p class="home-card-title">✅ 交叉质检</p>
           <p class="home-card-line">查三份结果矛盾</p>
           <p class="home-card-line">挑出真问题</p>
-        </button>
-        <button type="button" class="home-card" onclick="goTab('listing')">
-          <p class="home-card-title">🎨 场景图</p>
-          <p class="home-card-line">AI 生成配图</p>
-          <p class="home-card-line">带 AI 角标</p>
         </button>
       </div>
 
