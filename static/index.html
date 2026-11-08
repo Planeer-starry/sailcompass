@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/static/help.css?v=__BUILD_ID__">
   <link rel="stylesheet" href="/static/motion.css?v=__BUILD_ID__">
   <link rel="stylesheet" href="/static/anim.css?v=__BUILD_ID__">
+
   <script src="/static/glossary.js?v=__BUILD_ID__" defer></script>
   <script src="/static/render.js?v=__BUILD_ID__" defer></script>
   <script src="/static/app.js?v=__BUILD_ID__" defer></script>
@@ -282,7 +283,7 @@
           <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示市场洞察结果。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-insight" class="evidence-pre">（生成后显示原文）</pre></details>
-        <div class="mt-4"><button class="btn-secondary h-12 px-6" onclick="exportTab('insight')">⬇️ 导出</button></div>
+        <div class="mt-4 flex flex-wrap items-center gap-3"><button class="btn-primary h-12 px-6" onclick="exportWord()">⬇️ 导出 Word</button><button class="btn-ghost h-12 px-4 text-sm" onclick="exportTab('insight')">导出 .md</button></div>
         <div id="chat-insight" class="chat-box mt-6">
           <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
           <div class="chat-list"></div>
@@ -299,7 +300,7 @@
           <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示各目标语言的 Listing 文案。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-listing" class="evidence-pre">（生成后显示原文）</pre></details>
-        <div class="mt-4"><button class="btn-secondary h-12 px-6" onclick="exportTab('listing')">⬇️ 导出</button></div>
+        <div class="mt-4 flex flex-wrap items-center gap-3"><button class="btn-primary h-12 px-6" onclick="exportWord()">⬇️ 导出 Word</button><button class="btn-ghost h-12 px-4 text-sm" onclick="exportTab('listing')">导出 .md</button></div>
 
         <!-- 场景图生成（阶段 5）：独立卡片；未配置灰字禁用、失败显示示例图，均不影响其他区域 -->
         <div class="mt-6 p-6 bg-white border border-line rounded-2xl card-shadow">
@@ -349,7 +350,8 @@
           <label class="flex items-start gap-2"><input id="review-check" type="checkbox" class="mt-1" onchange="onReviewCheck()"><span>我已逐条复核上述风险项，确认可以交付</span></label>
           <div class="flex flex-wrap items-center gap-3 mt-4">
             <button id="btn-mark" class="btn-secondary h-12 px-6" disabled onclick="markReviewed()">标记为已审核</button>
-            <button id="btn-export-compliance" class="btn-secondary h-12 px-6" disabled onclick="exportTab('compliance')">⬇️ 导出</button>
+            <button id="btn-export-word-compliance" class="btn-primary h-12 px-6" disabled onclick="exportWord()">⬇️ 导出 Word</button>
+            <button id="btn-export-compliance" class="btn-ghost h-12 px-4 text-sm" disabled onclick="exportTab('compliance')">导出 .md</button>
             <span id="red-pending-tip" class="red-pending-tip hidden"></span>
           </div>
           <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
@@ -371,7 +373,7 @@
           <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示交叉质检结果。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-quality" class="evidence-pre">（生成后显示原文）</pre></details>
-        <div class="mt-4"><button class="btn-secondary h-12 px-6" onclick="exportTab('quality')">⬇️ 导出</button></div>
+        <div class="mt-4 flex flex-wrap items-center gap-3"><button class="btn-primary h-12 px-6" onclick="exportWord()">⬇️ 导出 Word</button><button class="btn-ghost h-12 px-4 text-sm" onclick="exportTab('quality')">导出 .md</button></div>
         <div id="chat-quality" class="chat-box mt-6">
           <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
           <div class="chat-list"></div>

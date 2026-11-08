@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import agents
+import export_docx
 import image_gen
 import intent
 import llm_config
@@ -48,6 +49,8 @@ app.mount("/static", NoCacheStaticFiles(directory=str(BASE_DIR / "static")), nam
 
 # 意图理解路由：一句话解析产品字段 + 生成/咨询分流（实现见 intent.py，守 main.py 行数红线）
 app.include_router(intent.router)
+# Word 导出路由：文档构建与路由同处 export_docx.py，主文件不涨行数
+app.include_router(export_docx.router)
 
 
 # 静态资源版本号：进程启动时刻（模块级常量）。重启即变 → 链接变 → 浏览器强制拉新文件；部署本来就要重启，等于"部署即生效"，零维护
@@ -162,11 +165,13 @@ def generate(req: GenerateRequest, background_tasks: BackgroundTasks, request: R
     if not req.product.strip():
         # 错误格式统一 {"error": ...}，不用 HTTPException 默认的 {"detail": ...}
         return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
+    info = _to_info(req)
     task_id = task_manager.create_task()
+    task_manager.update_task(task_id, info=info)  # 导出 Word 需要产品名与创建时间
     if forced or not llm_config.text_ready(cfg):
         background_tasks.add_task(_run_demo_pipeline, task_id)
     else:
-        background_tasks.add_task(_run_pipeline, task_id, _to_info(req), _agent_cfg(cfg))
+        background_tasks.add_task(_run_pipeline, task_id, info, _agent_cfg(cfg))
     return {"task_id": task_id}
 
 

@@ -81,12 +81,14 @@ function markReviewed() {
   btn.disabled = true;
   btn.textContent = "✅ 已审核";
   document.getElementById("btn-export-compliance").disabled = false;
+  document.getElementById("btn-export-word-compliance").disabled = false;
 }
 function resetReview() {
   var btn = document.getElementById("btn-mark");
   btn.disabled = true;
   btn.textContent = "标记为已审核";
   document.getElementById("btn-export-compliance").disabled = true;
+  document.getElementById("btn-export-word-compliance").disabled = true;
 }
 
 
@@ -269,6 +271,12 @@ function resetReviewGate() {
   document.getElementById("review-check").checked = false;
   resetReview();
   updateReviewGate();   // 新结果无 action_status → 红字显示 N 起引导作用（无红项则不显示）
+}
+
+// ---------- 导出 Word：交给后端生成 .docx 并下载（整页跳转即可，无需 Blob） ----------
+function exportWord() {
+  if (!currentTaskId) { showToast("请先生成报告，再导出 Word"); return; }
+  window.location.href = "/api/export-docx/" + window.currentTaskId;
 }
 
 // ---------- 导出：当前 Tab 内容下载为 .md（Blob + a.download） ----------
