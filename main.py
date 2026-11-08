@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 import agents
 import image_gen
+import llm_config
 import task_manager
 
 # 项目根目录：保证在任意工作目录启动都能找到 static / prompts
@@ -71,6 +72,11 @@ def _force_demo(request: Request) -> bool:
     return request.headers.get("X-Force-Mode", "").strip().lower() == "demo"
 
 
+def _agent_cfg(cfg: dict):
+    """请求头触发的配置才透传给 Agent；.env 路径返回 None，沿用原全局单例"""
+    return cfg if cfg.get("from_header") else None
+
+
 def _load_demo_data() -> dict:
     """读取演示问答/识图/模型清单；首次读取后缓存，文件缺失时抛出明确异常"""
     global _demo_data
@@ -105,16 +111,20 @@ def index():
 
 @app.get("/api/health")
 def health(request: Request):
-    """健康检查：存活 + 各能力配置状态 + 模式来源（forced 优先于 auto）"""
+    """健康检查：存活 + 各能力配置状态 + 模式来源（header > .env > 演示模式）"""
     forced = _force_demo(request)
-    text_ok = text_configured()
+    cfg = llm_config.resolve_llm_config(request)
+    text_ok = llm_config.text_ready(cfg)
     return {
         "ok": True,
-        "vision_configured": agents.vision_configured(),
-        "image_configured": image_gen.image_configured(),
+        "vision_configured": llm_config.vision_ready(cfg),
+        "image_configured": llm_config.image_ready(cfg),
         "text_configured": text_ok,
         "demo_mode": forced or not text_ok,
         "mode_source": "forced" if forced else "auto",
+        "text_model": cfg["text_model"],
+        "vision_model": cfg["vision_model"],
+        "image_model": cfg["image_model"],
     }
 
 
@@ -144,14 +154,15 @@ def _to_info(req: GenerateRequest) -> dict:
 def generate(req: GenerateRequest, background_tasks: BackgroundTasks, request: Request):
     """创建任务并立刻返回 task_id：强制/自动演示走示例数据，否则跑 Agent"""
     forced = _force_demo(request)
+    cfg = llm_config.resolve_llm_config(request)
     if not req.product.strip():
         # 错误格式统一 {"error": ...}，不用 HTTPException 默认的 {"detail": ...}
         return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
     task_id = task_manager.create_task()
-    if forced or demo_mode():
+    if forced or not llm_config.text_ready(cfg):
         background_tasks.add_task(_run_demo_pipeline, task_id)
     else:
-        background_tasks.add_task(_run_pipeline, task_id, _to_info(req))
+        background_tasks.add_task(_run_pipeline, task_id, _to_info(req), _agent_cfg(cfg))
     return {"task_id": task_id}
 
 
@@ -176,27 +187,27 @@ def _run_demo_pipeline(task_id: str) -> None:
         task_manager.update_task(task_id, status="failed", error=f"演示数据不可用：{e}")
 
 
-def _run_pipeline(task_id: str, info: dict) -> None:
+def _run_pipeline(task_id: str, info: dict, cfg=None) -> None:
     """后台四段流水线：任一段失败即停并记 error，已完成结果保留"""
     try:
         # 第 1 段：市场洞察
         task_manager.update_task(task_id, stage="insight", progress=1)
-        insight = agents.market_insight(info)
+        insight = agents.market_insight(info, cfg=cfg)
         task_manager.append_result(task_id, insight=insight)
 
         # 第 2 段：多语种 Listing
         task_manager.update_task(task_id, stage="listing", progress=2)
-        listing = agents.localize_listing(info, insight)
+        listing = agents.localize_listing(info, insight, cfg=cfg)
         task_manager.append_result(task_id, listing=listing)
 
         # 第 3 段：合规体检（rows 结构化 + raw 原文留证）
         task_manager.update_task(task_id, stage="compliance", progress=3)
-        rows, raw = agents.compliance_check(info, listing)
+        rows, raw = agents.compliance_check(info, listing, cfg=cfg)
         task_manager.append_result(task_id, compliance=rows, compliance_raw=raw)
 
         # 第 4 段：交叉质检
         task_manager.update_task(task_id, stage="quality", progress=4)
-        quality = agents.quality_check(info, insight, listing, rows)
+        quality = agents.quality_check(info, insight, listing, rows, cfg=cfg)
         task_manager.append_result(task_id, quality=quality)
 
         task_manager.update_task(task_id, status="done", stage="")
@@ -239,6 +250,7 @@ def _build_chat_context(result: dict, tab: str) -> str:
 def chat(req: ChatRequest, request: Request):
     """小海螺追问：只依据当前页报告内容回答；异常明文返回，不静默"""
     forced = _force_demo(request)
+    cfg = llm_config.resolve_llm_config(request)
     if req.tab not in ("insight", "listing", "compliance", "quality"):
         return JSONResponse(status_code=400, content={"error": "未知的页面：" + req.tab})
     if not req.question.strip():
@@ -246,14 +258,14 @@ def chat(req: ChatRequest, request: Request):
     task = task_manager.get_task(req.task_id)
     if task is None:
         return JSONResponse(status_code=404, content={"error": "任务不存在"})
-    if forced or demo_mode():
+    if forced or not llm_config.text_ready(cfg):
         # 演示模式不读报告上下文、不调模型，返回固定说明
         return {"answer": _load_demo_data()["chat_answer"], "demo": True}
     context = _build_chat_context(task["result"], req.tab)
     if not context.strip():
         return JSONResponse(status_code=400, content={"error": "本页暂无报告内容，请先生成"})
     try:
-        answer = agents.answer_question(req.task_id, req.tab, context, req.question.strip())
+        answer = agents.answer_question(req.task_id, req.tab, context, req.question.strip(), cfg=_agent_cfg(cfg))
         return {"answer": answer}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"回答失败：{e}"})
@@ -269,18 +281,32 @@ class AskRequest(BaseModel):
 def ask(req: AskRequest, request: Request):
     """小海螺自由问答：无需任务/报告，纯常识问答；历史只取最近 3 轮（6 条）防 token 膨胀"""
     forced = _force_demo(request)
+    cfg = llm_config.resolve_llm_config(request)
     if not req.question.strip():
         return JSONResponse(status_code=400, content={"error": "请先输入问题"})
     if len(req.question) > 200:
         return JSONResponse(status_code=400, content={"error": "问题太长了，请精简到 200 字以内"})
-    if forced or demo_mode():
+    if forced or not llm_config.text_ready(cfg):
         # 演示模式：不调模型，按关键词命中预置回答，未命中给兜底引导
         return {"answer": _demo_ask_answer(req.question.strip()), "demo": True}
     try:
-        answer = agents.ask_conch(req.question.strip(), req.history[-6:])
+        answer = agents.ask_conch(req.question.strip(), req.history[-6:], cfg=_agent_cfg(cfg))
         return {"answer": answer}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"回答失败：{e}"})
+
+
+class TestConfigRequest(BaseModel):
+    """连通测试请求：不落盘、不记录密钥"""
+    base_url: str = ""
+    api_key: str = ""
+    model: str = ""
+
+
+@app.post("/api/test-config")
+def test_config(req: TestConfigRequest):
+    """连通测试：HTTP 200 返回 ok/error，失败原因明文返回"""
+    return llm_config.test_llm_config(req.base_url, req.api_key, req.model)
 
 
 
@@ -295,11 +321,12 @@ def analyze_image(request: Request, file: UploadFile | None = File(None)):
     同步路由（与 /api/chat 一致）：vision 调用最长 180 秒，放线程池执行，不阻塞事件循环。
     """
     forced = _force_demo(request)
-    demo = forced or demo_mode()
-    if not demo and not agents.vision_configured():
+    cfg = llm_config.resolve_llm_config(request)
+    demo = forced or not llm_config.text_ready(cfg)
+    if not demo and not llm_config.vision_ready(cfg):
         return JSONResponse(
             status_code=400,
-            content={"error": "识图未配置，请在 .env 填写 VISION_* 三项"},
+            content={"error": "识图未配置，请在设置里填写视觉模型"},
         )
     if file is None:
         return JSONResponse(status_code=400, content={"error": "请选择要识别的图片"})
@@ -312,7 +339,7 @@ def analyze_image(request: Request, file: UploadFile | None = File(None)):
     if len(image_bytes) > MAX_IMAGE_BYTES:
         return JSONResponse(status_code=400, content={"error": "图片超过 20MB，请压缩后重试"})
     try:
-        result = agents.analyze_product_image(image_bytes, file.content_type)
+        result = agents.analyze_product_image(image_bytes, file.content_type, cfg=_agent_cfg(cfg))
     except RuntimeError as e:
         # 「识图未配置」等运行时异常：按约定转 400 明文提示，不静默
         return JSONResponse(status_code=400, content={"error": str(e)})
@@ -335,20 +362,21 @@ IMAGE_SCENES = ("outdoor", "home", "gift")  # 与 image_gen.SCENE_WORDS 键保�
 def generate_image(req: GenerateImageRequest, request: Request):
     """场景图生成：同步路由（生图约 10–30 秒，放线程池执行，不阻塞事件循环）"""
     forced = _force_demo(request)
+    cfg = llm_config.resolve_llm_config(request)
     if req.scene not in IMAGE_SCENES:
         return JSONResponse(status_code=400, content={"error": "非法场景：" + req.scene})
     if not req.product.strip():
         return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
-    if forced or demo_mode():
+    if forced or not llm_config.text_ready(cfg):
         # 演示模式：不调生图模型，按场景返回内置示例图
         return {"image_path": f"/static/demo_images/{req.scene}.png", "demo": True}
-    if not image_gen.image_configured():
+    if not llm_config.image_ready(cfg):
         return JSONResponse(
             status_code=400,
-            content={"error": "生图未配置，请在设置里填写 IMAGE_*"},
+            content={"error": "生图未配置，请在设置里填写生图模型"},
         )
     try:
-        return image_gen.generate_scene_image(req.product.strip(), req.scene)
+        return image_gen.generate_scene_image(req.product.strip(), req.scene, cfg=_agent_cfg(cfg))
     except RuntimeError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
 

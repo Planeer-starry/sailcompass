@@ -19,9 +19,16 @@ PROMPT_DIR = Path(__file__).parent / "prompts"
 _client = None
 
 
-def _get_client() -> OpenAI:
-    """获取 OpenAI 客户端；配置缺失时抛出带中文提示的异常，不静默"""
+def _get_client(cfg=None) -> OpenAI:
+    """获取 OpenAI 客户端：cfg 有值用临时 client，不写全局；cfg=None 沿用原单例"""
     global _client
+    if cfg and cfg.get("base_url") and cfg.get("api_key"):
+        return OpenAI(
+            base_url=cfg["base_url"],
+            api_key=cfg["api_key"],
+            timeout=180,
+            max_retries=1,
+        )
     if _client is None:
         base_url = os.getenv("API_BASE_URL")
         api_key = os.getenv("API_KEY")
@@ -32,7 +39,7 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def call_llm(system: str, user: str, temperature: float = 0.3) -> str:
+def call_llm(system: str, user: str, temperature: float = 0.3, cfg=None) -> str:
     """两条消息的便捷封装（四段流水线用）"""
     return call_llm_messages(
         [
@@ -40,15 +47,16 @@ def call_llm(system: str, user: str, temperature: float = 0.3) -> str:
             {"role": "user", "content": user},
         ],
         temperature,
+        cfg=cfg,
     )
 
 
-def call_llm_messages(messages: list, temperature: float = 0.3) -> str:
+def call_llm_messages(messages: list, temperature: float = 0.3, cfg=None) -> str:
     """底层：完整 messages 列表调用大模型；异常原样抛出，由路由层转为错误响应"""
-    model = os.getenv("MODEL")
+    model = (cfg or {}).get("text_model") or os.getenv("MODEL")
     if not model:
         raise RuntimeError("缺少 MODEL，请检查 .env 文件")
-    resp = _get_client().chat.completions.create(
+    resp = _get_client(cfg).chat.completions.create(
         model=model,
         messages=messages,
         temperature=temperature,
@@ -90,27 +98,27 @@ def build_info_text(info: dict) -> str:
 
 
 # ---------- Agent 1 · 市场洞察 ----------
-def market_insight(info: dict) -> str:
+def market_insight(info: dict, cfg=None) -> str:
     """输入产品信息，输出六小节洞察文本"""
     system = load_prompt("insight")
     user = build_info_text(info)
-    return call_llm(system, user)
+    return call_llm(system, user, cfg=cfg)
 
 
 # ---------- Agent 2 · 多语种 Listing ----------
-def localize_listing(info: dict, insight: str) -> str:
+def localize_listing(info: dict, insight: str, cfg=None) -> str:
     """根据产品信息与市场洞察，为每种目标语言生成 Listing 文案"""
     system = load_prompt("listing")
     user = build_info_text(info) + "\n\n===== 市场洞察 =====\n" + insight
-    return call_llm(system, user)
+    return call_llm(system, user, cfg=cfg)
 
 
 # ---------- Agent 3 · 合规体检 ----------
-def compliance_check(info: dict, listing: str) -> tuple[list, str]:
+def compliance_check(info: dict, listing: str, cfg=None) -> tuple[list, str]:
     """对产品与 Listing 做合规体检，返回 (rows, raw)；JSON 解析失败不抛异常"""
     system = load_prompt("compliance")
     user = build_info_text(info) + "\n\n===== Listing 文案 =====\n" + listing
-    raw = call_llm(system, user)
+    raw = call_llm(system, user, cfg=cfg)
     rows = _parse_compliance_rows(raw)
     return rows, raw
 
@@ -168,7 +176,7 @@ def _parse_compliance_rows(raw: str) -> list:
 
 
 # ---------- Agent 4 · 交叉质检 ----------
-def quality_check(info: dict, insight: str, listing: str, rows: list) -> str:
+def quality_check(info: dict, insight: str, listing: str, rows: list, cfg=None) -> str:
     """独立交叉审核：核对前三份结果的一致性；temperature=0.2 求稳"""
     system = load_prompt("quality")
     user = (
@@ -177,7 +185,7 @@ def quality_check(info: dict, insight: str, listing: str, rows: list) -> str:
         + "\n\n===== Listing 文案 =====\n" + listing
         + "\n\n===== 合规体检（摘要）=====\n" + _format_rows_brief(rows)
     )
-    return call_llm(system, user, temperature=0.2)
+    return call_llm(system, user, temperature=0.2, cfg=cfg)
 
 
 def _format_rows_brief(rows: list) -> str:
@@ -204,23 +212,23 @@ CHAT_SYSTEM_PROMPT = (
 )
 
 
-def answer_question(task_id: str, tab: str, context: str, question: str) -> str:
+def answer_question(task_id: str, tab: str, context: str, question: str, cfg=None) -> str:
     """小海螺：基于当前页报告内容回答追问；多轮历史存内存，每个 task_id+tab 最多保留最近 10 轮"""
     system = CHAT_SYSTEM_PROMPT + "\n\n===== 当前页面报告内容 =====\n" + context
     messages = [{"role": "system", "content": system}]
     messages += task_manager.get_chat_history(task_id, tab)
     messages.append({"role": "user", "content": question})
-    answer = call_llm_messages(messages, temperature=0.3)
+    answer = call_llm_messages(messages, temperature=0.3, cfg=cfg)
     task_manager.append_chat(task_id, tab, question, answer)
     return answer
 
 # ---------- 小海螺 · 首页自由问答（独立于 Tab 追问：无需任务/报告，纯常识问答） ----------
-def ask_conch(question: str, history: list) -> str:
+def ask_conch(question: str, history: list, cfg=None) -> str:
     """首页自由问答：无报告上下文，history 为前端带来的最近对话（已由路由层截到 6 条）"""
     messages = [{"role": "system", "content": load_prompt("ask")}]
     messages += [{"role": m["role"], "content": m["content"]} for m in history]
     messages.append({"role": "user", "content": question})
-    return call_llm_messages(messages, temperature=0.3)
+    return call_llm_messages(messages, temperature=0.3, cfg=cfg)
 
 # ---------- 阶段 4 · 产品图识别 ----------
 # vision 客户端惰性单例：与文本客户端分开（BASE_URL / KEY / MODEL 三项独立配置）
@@ -232,9 +240,16 @@ def vision_configured() -> bool:
     return bool(os.getenv("VISION_BASE_URL") and os.getenv("VISION_API_KEY") and os.getenv("VISION_MODEL"))
 
 
-def _get_vision_client() -> OpenAI:
-    """获取 vision 客户端；未配置时抛明确异常「识图未配置」，不用文本模型硬顶"""
+def _get_vision_client(cfg=None) -> OpenAI:
+    """获取 vision 客户端：cfg 有专用地址/密钥时用临时 client；否则沿用原单例"""
     global _vision_client
+    if cfg and cfg.get("vision_base_url") and cfg.get("vision_api_key"):
+        return OpenAI(
+            base_url=cfg["vision_base_url"],
+            api_key=cfg["vision_api_key"],
+            timeout=180,
+            max_retries=1,
+        )
     if _vision_client is None:
         if not vision_configured():
             raise RuntimeError("识图未配置")
@@ -291,15 +306,19 @@ def _normalize_image_result(data: dict) -> dict:
     }
 
 
-def analyze_product_image(image_bytes: bytes, mime: str) -> dict:
+def analyze_product_image(image_bytes: bytes, mime: str, cfg=None) -> dict:
     """识图主入口：调 vision 模型识别产品图；解析失败返回 {"error": ...}，不抛 500"""
-    if not vision_configured():
+    if cfg:
+        ready = bool(cfg.get("vision_base_url") and cfg.get("vision_api_key") and cfg.get("vision_model"))
+    else:
+        ready = vision_configured()
+    if not ready:
         # 路由层会转成 400 + 中文提示；此处抛出保证函数单独被调用时也有明确信号
         raise RuntimeError("识图未配置")
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
     messages = _build_image_messages(image_b64, mime)
-    model = os.getenv("VISION_MODEL")
-    resp = _get_vision_client().chat.completions.create(
+    model = (cfg or {}).get("vision_model") or os.getenv("VISION_MODEL")
+    resp = _get_vision_client(cfg).chat.completions.create(
         model=model,
         messages=messages,
         temperature=0.1,

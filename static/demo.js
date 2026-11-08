@@ -5,6 +5,7 @@
 
 var FORCE_KEY = "sailcompass_force_demo";
 var DEMO_BANNER_KEY = "sailcompass_demo_banner_dismissed";
+var LLM_CONFIG_KEY = "sailcompass_llm_config";   // 与 settings.js 共用同一个键
 var originalFetch = window.fetch.bind(window);   // 保存原始 fetch：包装层与切换探测都用它
 window.demoMode = false;                          // 当前是否为演示模式（含强制）
 window.demoModeSource = "auto";                   // forced / auto
@@ -21,26 +22,38 @@ function isApiUrl(input) {
   }
 }
 
-function installForceDemoFetch() {
-  if (window.__forceDemoFetchInstalled) { return; }
-  window.__forceDemoFetchInstalled = true;
+function installApiHeaderFetch() {
+  if (window.__apiHeaderFetchInstalled) { return; }
+  window.__apiHeaderFetchInstalled = true;
   window.fetch = function (input, init) {
     if (!isApiUrl(input)) { return originalFetch(input, init); }
     if (input instanceof Request) {
-      var reqHeaders = new Headers(input.headers);
-      reqHeaders.set("X-Force-Mode", "demo");
+      var reqHeaders = buildApiHeaders(input.headers);
       return originalFetch(new Request(input, { headers: reqHeaders }));
     }
     var nextInit = Object.assign({}, init || {});
-    var headers = new Headers(nextInit.headers || {});
-    headers.set("X-Force-Mode", "demo");
-    nextInit.headers = headers;
+    nextInit.headers = buildApiHeaders(nextInit.headers);
     return originalFetch(input, nextInit);
   };
 }
 
-// 顶层同步安装：必须早于 scene_image.js 等脚本的 DOMContentLoaded health 请求
-if (readForceDemo()) { installForceDemoFetch(); }
+// 每次请求实时读 localStorage：保存/清除配置后立即生效，无需重装包装
+function buildApiHeaders(baseHeaders) {
+  var headers = new Headers(baseHeaders || {});
+  if (readForceDemo()) { headers.set("X-Force-Mode", "demo"); }
+  var cfg = readLlmConfig();
+  if (cfg) {
+    headers.set("X-LLM-Base-Url", cfg.base_url);
+    headers.set("X-LLM-Key", cfg.api_key);
+    headers.set("X-LLM-Model", cfg.text_model);
+    if (cfg.vision_model) { headers.set("X-Vision-Model", cfg.vision_model); }
+    if (cfg.image_model) { headers.set("X-Image-Model", cfg.image_model); }
+  }
+  return headers;
+}
+
+// 顶层同步安装：有本地配置或强制演示时都要包装，且必须早于 scene_image.js 的 health 请求
+if (readForceDemo() || readLlmConfig()) { installApiHeaderFetch(); }
 
 // ---------- 初始化：health 判定当前模式 → 注入按钮 / 显示提示条 ----------
 function setupDemoMode() {
@@ -118,6 +131,17 @@ function switchToDemo() {
 }
 
 function switchToNormal() {
+  // 本地已有模型配置：直接允许切正常，不再要求 .env 的 text_configured
+  if (readLlmConfig()) {
+    try {
+      localStorage.removeItem(FORCE_KEY);
+    } catch (e) {
+      toast("浏览器存储不可用，无法切回正常模式");
+      return;
+    }
+    location.reload();
+    return;
+  }
   requestHealthRaw().then(function (health) {
     if (!health.text_configured) {
       toast("请先配置模型服务；未配置时将保持演示模式");
@@ -163,6 +187,18 @@ function writeDemoBannerDismissed() {
 function readForceDemo() {
   try { return localStorage.getItem(FORCE_KEY) === "1"; }
   catch (e) { return false; }
+}
+
+function readLlmConfig() {
+  try {
+    var raw = localStorage.getItem(LLM_CONFIG_KEY);
+    if (!raw) { return null; }
+    var cfg = JSON.parse(raw);
+    if (!cfg || !cfg.base_url || !cfg.api_key || !cfg.text_model) { return null; }
+    return cfg;
+  } catch (e) {
+    return null;
+  }
 }
 
 // ---------- 设置页橙色提示条：切正常失败或直接访问设置页时显示 ----------

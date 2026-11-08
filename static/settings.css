@@ -1,0 +1,57 @@
+/* 出海罗盘 · 设置页模型配置面板（由 settings.js 动态引入，不占 index.html / motion.css 行数） */
+.settings-wrap { max-width: 1100px; margin: 0 auto; padding: 32px; }
+.settings-panel {
+  background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .08); padding: 24px; margin-bottom: 24px;
+}
+.settings-title { font-size: 20px; font-weight: 700; color: #1E3A8A; margin-bottom: 20px; }
+.settings-block { margin-bottom: 24px; }
+.settings-subtitle { font-size: 14px; font-weight: 600; color: #1E293B; margin-bottom: 12px; }
+
+.settings-status { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 8px 14px; }
+.settings-status-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: #475569; }
+.settings-status-row > span:first-child { width: 72px; color: #64748B; }
+.settings-status-value { flex: 1; word-break: break-all; }
+.settings-dot { width: 8px; height: 8px; border-radius: 50%; background: #CBD5E1; flex: 0 0 auto; }
+.settings-dot.is-on { background: #16A34A; }
+
+.provider-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.provider-card {
+  position: relative; text-align: left; background: #FFFFFF; border: 1px solid #E2E8F0;
+  border-radius: 10px; padding: 12px; cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.provider-card:hover { border-color: #94A3B8; }
+.provider-card.is-selected { border-color: #1E3A8A; box-shadow: 0 0 0 2px rgba(30, 58, 138, .12); }
+.provider-check { position: absolute; top: 8px; right: 8px; color: #1E3A8A; font-size: 12px; font-weight: 700; }
+.provider-name { display: block; font-size: 13px; font-weight: 600; color: #1E293B; padding-right: 16px; }
+.provider-badge {
+  display: inline-block; margin-top: 4px; font-size: 10px; color: #92400E;
+  background: #FEF3C7; border-radius: 999px; padding: 1px 6px;
+}
+.provider-note { display: block; margin-top: 6px; font-size: 11px; color: #64748B; line-height: 1.45; }
+
+.settings-field { display: block; margin-bottom: 10px; }
+.settings-field span { display: block; font-size: 12px; color: #64748B; margin-bottom: 4px; }
+.settings-field input {
+  width: 100%; height: 40px; padding: 0 10px; border: 1px solid #E2E8F0;
+  border-radius: 8px; font-size: 13px; color: #1E293B; background: #FFFFFF;
+}
+.settings-field input:focus { outline: none; border-color: #1E3A8A; box-shadow: 0 0 0 3px rgba(30, 58, 138, .1); }
+.settings-field input[readonly] { background: #F8FAFC; color: #64748B; }
+
+.settings-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.settings-test-result { margin-top: 10px; font-size: 13px; }
+.settings-test-result.is-ok { color: #15803D; }
+.settings-test-result.is-error { color: #B91C1C; }
+
+.settings-footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #E2E8F0; }
+.settings-clear { background: none; border: 0; color: #64748B; font-size: 13px; cursor: pointer; padding: 0; }
+.settings-clear:hover { color: #B91C1C; }
+.settings-note { margin-top: 8px; font-size: 12px; color: #94A3B8; }
+
+@media (max-width: 768px) {
+  .settings-wrap { padding: 16px; }
+  .settings-panel { padding: 16px; }
+  .provider-grid { grid-template-columns: repeat(2, 1fr); }
+}

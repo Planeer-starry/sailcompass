@@ -37,9 +37,16 @@ def image_configured() -> bool:
     return bool(os.getenv("IMAGE_BASE_URL") and os.getenv("IMAGE_API_KEY") and os.getenv("IMAGE_MODEL"))
 
 
-def _get_image_client() -> OpenAI:
-    """获取生图客户端；未配置时抛明确异常「生图未配置」"""
+def _get_image_client(cfg=None) -> OpenAI:
+    """获取生图客户端：cfg 有专用地址/密钥时用临时 client；否则沿用原单例"""
     global _image_client
+    if cfg and cfg.get("image_base_url") and cfg.get("image_api_key"):
+        return OpenAI(
+            base_url=cfg["image_base_url"],
+            api_key=cfg["image_api_key"],
+            timeout=120,
+            max_retries=1,
+        )
     if _image_client is None:
         if not image_configured():
             raise RuntimeError("生图未配置")
@@ -101,30 +108,34 @@ def _normalize_image_response(data: dict) -> dict:
     return {"error": "生图接口返回里既没有 url 也没有 b64_json"}
 
 
-def _call_images_api(body: dict) -> dict:
+def _call_images_api(body: dict, cfg=None) -> dict:
     """两级降级：先 SDK images.generate；失败则底层 post 直打兼容层同一路径"""
     try:
-        resp = _get_image_client().images.generate(
+        resp = _get_image_client(cfg).images.generate(
             model=body["model"], prompt=body["prompt"], size=body["size"],
         )
         return resp.model_dump()
     except Exception as sdk_err:
         logger.warning("SDK images.generate 不可用（%s），降级为底层 post 直连", sdk_err)
-        data = _get_image_client().post("/images/generations", cast_to=object, body=body)
+        data = _get_image_client(cfg).post("/images/generations", cast_to=object, body=body)
         return data if isinstance(data, dict) else {"data": []}
 
 
-def generate_scene_image(product: str, scene: str) -> dict:
+def generate_scene_image(product: str, scene: str, cfg=None) -> dict:
     """生图主入口：未配置抛 RuntimeError；接口失败返回 {"error": ...}，不抛 500"""
-    if not image_configured():
+    if cfg:
+        ready = bool(cfg.get("image_base_url") and cfg.get("image_api_key") and cfg.get("image_model"))
+    else:
+        ready = image_configured()
+    if not ready:
         raise RuntimeError("生图未配置")
     body = {
-        "model": os.getenv("IMAGE_MODEL"),
+        "model": (cfg or {}).get("image_model") or os.getenv("IMAGE_MODEL"),
         "prompt": _build_prompt(product, scene),
         "size": "1024x1024",
     }
     try:
-        data = _call_images_api(body)
+        data = _call_images_api(body, cfg=cfg)
     except Exception as raw_err:
         return {"error": f"生图失败：{raw_err}"}
     # 原始响应（截断 800 字符；key 只在请求头，响应体不含）落日志，方便排查兼容层差异
