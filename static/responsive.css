@@ -1,0 +1,24 @@
+/* 出海罗盘 · 小屏适配（合规表格卡片化；桌面端 >640px 样式完全不变） */
+.compliance-wrap { overflow-x: auto; }
+
+@media (max-width: 640px) {
+  .compliance-wrap { overflow-x: visible !important; }
+  .compliance thead { display: none; }
+  .compliance, .compliance tbody, .compliance tr, .compliance td {
+    display: block; width: 100%;
+  }
+  .compliance tr {
+    border: 1px solid #E2E8F0; border-radius: 12px;
+    padding: 12px; margin-bottom: 12px; background: #fff;
+  }
+  .compliance td { border: none; padding: 6px 0; display: flex; gap: 8px; }
+  .compliance td::before {
+    content: attr(data-label);
+    flex: 0 0 64px; color: #64748B; font-size: 12px; padding-top: 2px;
+  }
+  .compliance td[data-label="风险项"]::before { display: none; }
+  .compliance td[data-label="风险项"] {
+    font-weight: 600; font-size: 15px; padding-bottom: 8px;
+  }
+  .compliance td[data-label="处理状态"] .status-select { flex: 1; min-height: 36px; }
+}

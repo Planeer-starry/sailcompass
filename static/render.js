@@ -13,7 +13,7 @@ function renderCompliance(rows) {
     box.innerHTML = '<p class="text-slate-400">合规体检未能解析出结构化结果，请展开下方"证据与来源"查看模型原文。</p>';
     return;
   }
-  var head = '<div class="overflow-x-auto rounded-2xl border border-line bg-white card-shadow">' +
+  var head = '<div class="compliance-wrap overflow-x-auto rounded-2xl border border-line bg-white card-shadow">' +
     '<table class="compliance w-full text-sm border-collapse">' +
     '<colgroup><col style="width:20%"><col style="width:8%"><col style="width:26%"><col style="width:22%"><col style="width:8%"><col style="width:16%"></colgroup>' +
     '<thead><tr><th>风险项</th><th>风险等级' + termTag("风险等级（红黄绿）", true, "term-down") + '</th><th>依据</th><th>整改建议</th><th>需人工核实' + termTag("需人工核实", true, "term-down") + "</th>" +
@@ -21,10 +21,12 @@ function renderCompliance(rows) {
   var body = "";
   rows.forEach(function (r, i) {
     var cls = r.risk_level === "红" ? "tag-red" : r.risk_level === "黄" ? "tag-yellow" : "tag-green";
-    body += "<tr><td>" + escapeHtml(r.item) + '</td><td><span class="tag ' + cls + '">' +
-      escapeHtml(r.risk_level) + "</span></td><td>" + escapeHtml(r.basis) + "</td><td>" +
-      escapeHtml(r.action) + "</td><td>" + escapeHtml(r.need_verify) + "</td><td>" +
-      statusSelectHtml(i, r.action_status || "待处理") + "</td></tr>";
+    body += '<tr><td data-label="风险项">' + escapeHtml(r.item) +
+      '</td><td data-label="等级"><span class="tag ' + cls + '">' +
+      escapeHtml(r.risk_level) + '</span></td><td data-label="依据">' + escapeHtml(r.basis) +
+      '</td><td data-label="建议">' + escapeHtml(r.action) +
+      '</td><td data-label="需核实">' + escapeHtml(r.need_verify) +
+      '</td><td data-label="处理状态">' + statusSelectHtml(i, r.action_status || "待处理") + "</td></tr>";
   });
   box.innerHTML = head + body + "</tbody></table></div>" +
     '<p class="compliance-note">红项需全部表态后才能审核通过；黄项和绿项不强制。</p>';
