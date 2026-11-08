@@ -1,0 +1,180 @@
+/* 出海罗盘 · 动画层（@keyframes + 缓动变量 + 动画应用规则）
+   红线：动画只碰 transform / opacity；静态布局与质感一律留在 motion.css。本文件在 motion.css 之后引入 */
+
+/* ═══ 一 · 缓动令牌（非线性） ═══ */
+:root {
+  --ease-out-expo: cubic-bezier(.16, 1, .3, 1);    /* 进入：快进慢出 */
+  --ease-in-expo: cubic-bezier(.7, 0, .84, 0);     /* 退出：慢进快出 */
+  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);   /* 交互：极轻微回弹 */
+  --ease-glide: cubic-bezier(.25, .1, .25, 1);     /* 位移：平滑无明显回弹 */
+}
+
+/* ═══ 二 · 关键帧（入场位移统一收到 6px） ═══ */
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pop { from { transform: scale(.6); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+@keyframes bubble-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes sidebar-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes panel-out { to { opacity: 0; transform: translateY(6px); } }
+@keyframes stage-pulse { 0% { opacity: .5; transform: scale(1); } 100% { opacity: 0; transform: scale(1.16); } }
+@keyframes shimmer-slide { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes ask-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: .45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ═══ 三 · 视图切换：只动内容层，骨架层不做动画 ═══ */
+.view.view-active { animation: fade-up var(--dur-slow) var(--ease-out-expo); }
+#main.view-active { animation: none; }
+#main.view-active > .max-w-4xl { animation: fade-up var(--dur-slow) var(--ease-out-expo); }
+#view-home.view-active { animation: none; }   /* 首页整页不做入场：避免 1100×1800 大合成层 */
+
+@media (min-width: 769px) {
+  body.route-work #sidebar { animation: sidebar-in 240ms var(--ease-out-expo); }
+}
+
+/* ═══ 四 · Hero：网格背景下沉到 ::before（静态），入场只作用于 4 个文字块 ═══ */
+.hero { position: relative; overflow: hidden; contain: layout paint; background: none; }
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .06) 0, rgba(255, 255, 255, .06) 1px, transparent 1px, transparent 24px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .06) 0, rgba(255, 255, 255, .06) 1px, transparent 1px, transparent 24px),
+    linear-gradient(135deg, #1E3A8A, #1E40AF);
+}
+.hero > * { position: relative; z-index: 1; }
+#view-home.view-active .hero { animation: none; }
+
+#view-home.view-active .hero-tag,
+#view-home.view-active .hero-title,
+#view-home.view-active .hero-sub,
+#view-home.view-active .hero-actions {
+  animation: fade-up 380ms var(--ease-out-expo) backwards;
+}
+#view-home.view-active .hero-tag { animation-delay: 0ms; }
+#view-home.view-active .hero-title { animation-delay: 50ms; }
+#view-home.view-active .hero-sub { animation-delay: 100ms; }
+#view-home.view-active .hero-actions { animation-delay: 150ms; }
+
+/* 图层提示只给最关键的 3 个，避免滥用吃显存 */
+.hero-title, .hero-actions { will-change: transform, opacity; }
+
+/* ═══ 五 · 四段进度条：完成弹一下 + 执行段光晕（伪元素 scale/opacity） ═══ */
+.stage { position: relative; }
+.stage-done { animation: pop 320ms var(--ease-out-expo); }
+.stage-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 6px rgba(30, 58, 138, .35);
+  animation: stage-pulse 1.4s linear infinite;
+  pointer-events: none;
+}
+
+/* ═══ 六 · Tab：指示器用 translateX + scaleX（合成层位移），不动 width ═══ */
+.tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 1px;
+  height: 2px;
+  border-radius: 2px;
+  background: #1E3A8A;
+  transform-origin: left center;
+  transition: transform 260ms var(--ease-glide);
+  will-change: transform;
+}
+.tab-panel.active { animation: fade-up 300ms var(--ease-out-expo); }
+
+/* ═══ 七 · 结果卡片与追问气泡入场 ═══ */
+.result-fresh > [id$="-content"] { animation: fade-up 380ms var(--ease-out-expo) backwards; }
+#panel-listing.result-fresh > [id$="-content"] { animation-delay: 50ms; }
+#panel-compliance.result-fresh > [id$="-content"] { animation-delay: 100ms; }
+#panel-quality.result-fresh > [id$="-content"] { animation-delay: 150ms; }
+.chat-bubble { animation: bubble-in 240ms var(--ease-out-expo); }
+
+/* ═══ 八 · 小海螺：卡片展开/收起、气泡、思考三点 ═══ */
+.ask-panel { animation: fade-up var(--dur-slow) var(--ease-out-expo); }
+.ask-msg { animation: bubble-in 240ms var(--ease-out-expo); }
+.ask-thinking .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94A3B8;
+  animation: ask-dot 1.2s var(--ease-out-expo) infinite;
+}
+.ask-thinking .dot:nth-child(2) { animation-delay: .15s; }
+.ask-thinking .dot:nth-child(3) { animation-delay: .3s; }
+.ask-panel.ask-leaving { animation: panel-out 200ms var(--ease-in-expo) forwards; }
+
+/* ═══ 九 · 场景图生成中：条纹层 translateX 扫描，不再动 background-position ═══ */
+.scene-shimmer { position: relative; overflow: hidden; background: #F1F5F9; }
+.scene-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 25%, #E2E8F0 37%, transparent 63%);
+  transform: translateX(-100%);
+  animation: shimmer-slide 1.4s infinite linear;
+}
+
+/* ═══ 十 · 卡片 hover：阴影升级交给伪元素 opacity，元素自身阴影固定不变 ═══ */
+.home-card, .md-body, #compliance-content > div, .resume-bar { position: relative; }
+.home-card::after, .md-body::after, #compliance-content > div::after, .resume-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--shadow-3);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out-expo);
+  pointer-events: none;
+}
+.home-card:hover::after, .md-body:hover::after,
+#compliance-content > div:hover::after, .resume-bar:hover::after { opacity: 1; }
+.home-card, .md-body, #compliance-content > div {
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.home-card:hover, .md-body:hover, #compliance-content > div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+}
+.resume-bar { transition: transform var(--dur-fast) var(--ease-spring); }
+.resume-bar:hover { transform: translateY(-1px); box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+#ask-list .md-body::after { opacity: 0 !important; }   /* 问答内容不做卡片 hover 上浮 */
+
+/* ═══ 十一 · 按钮阴影：预置在伪元素，只过渡 opacity ═══ */
+.btn-primary, .btn-secondary, .hero-btn-primary { position: relative; }
+.btn-primary::after, .btn-secondary::after, .hero-btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out-expo);
+  pointer-events: none;
+}
+.btn-primary::after { box-shadow: var(--shadow-brand); }
+.btn-secondary::after { box-shadow: var(--shadow-2); }
+.hero-btn-primary::after { box-shadow: 0 6px 16px rgba(30, 58, 138, .32); }
+.hero-btn-primary:hover { box-shadow: 0 2px 8px rgba(30, 58, 138, .15); }   /* 固定静态阴影，升级交给 ::after */
+.btn-primary:not(:disabled):hover::after,
+.btn-secondary:not(:disabled):hover::after,
+.hero-btn-primary:not(:disabled):hover::after { opacity: 1; }
+.btn-primary:not(:disabled):active::after,
+.btn-secondary:not(:disabled):active::after,
+.hero-btn-primary:not(:disabled):active::after { opacity: 0; }
+
+/* ═══ 十二 · 无障碍：减弱动态效果时关闭全部动画 ═══ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

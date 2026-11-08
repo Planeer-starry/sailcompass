@@ -5,13 +5,12 @@ var lastSwitchTime = 0;     // 上次 Tab 切换时刻：入场动画 300ms 内�
 var resizeTimer = null;     // resize debounce 句柄（100ms）
 var mutTimer = null;        // 面板内容变化 debounce 句柄（60ms）
 
-// ---------- 指示器定位：读 active 按钮 offsetLeft/offsetWidth 写 transform+width；rAF 包裹防首帧闪动 ----------
+// ---------- 指示器定位：读 active 按钮 offsetLeft/offsetWidth 写 transform(translateX + scaleX)；rAF 包裹防首帧闪动 ----------
 function positionIndicator() {
   requestAnimationFrame(function () {
     var active = document.querySelector(".tab-btn.active");
     if (!active || !tabIndicator) { return; }
-    tabIndicator.style.transform = "translateX(" + active.offsetLeft + "px)";
-    tabIndicator.style.width = active.offsetWidth + "px";
+    tabIndicator.style.transform = "translateX(" + active.offsetLeft + "px) scaleX(" + active.offsetWidth + ")";
   });
 }
 

@@ -52,7 +52,7 @@ function renderAllResults(result) {
   triggerFreshEntrance();
 }
 
-// ---------- 新结果入场动画：给四个面板加 .result-fresh（motion.css 依次落下），600ms 后摘除 ----------
+// ---------- 新结果入场动画：给四个面板加 .result-fresh（anim.css 依次落下），600ms 后摘除 ----------
 function triggerFreshEntrance() {
   var panels = document.querySelectorAll(".tab-panel");
   panels.forEach(function (p) { p.classList.add("result-fresh"); });
