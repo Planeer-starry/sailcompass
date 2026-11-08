@@ -373,3 +373,28 @@ html { scrollbar-gutter: stable; }
   .demo-badge { font-size: 10px; padding: 2px 7px; }
   .demo-banner { align-items: flex-start; }
 }
+/* ═══ 七 · 模式切换按钮 + 设置页演示提示（demo.js 动态注入，不改 index.html） ═══ */
+.mode-toggle {
+  height: 28px; font-size: 12px; padding: 0 10px; border-radius: 999px;
+  border: 1px solid transparent; cursor: pointer; display: inline-flex;
+  align-items: center; gap: 5px; margin-left: 12px; margin-right: auto; white-space: nowrap;
+  transition: background 150ms var(--ease-out);
+}
+.mode-toggle.is-normal { background: #DCFCE7; color: #166534; border-color: #BBF7D0; }
+.mode-toggle.is-normal:hover { background: #BBF7D0; }
+.mode-toggle.is-demo { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+.mode-toggle.is-demo:hover { background: #FDE68A; }
+.mode-toggle-icon { opacity: .7; font-size: 11px; }
+
+.settings-demo-tip {
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 24px; color: #92400E; font-size: 13px;
+}
+.settings-demo-tip p { margin: 0; }
+.settings-demo-tip-hint { margin-top: 6px !important; color: #B45309; font-size: 12px; }
+.settings-demo-tip code { background: #FEF3C7; padding: 1px 4px; border-radius: 4px; }
+
+@media (max-width: 768px) {
+  .mode-toggle { margin-left: 8px; padding: 0 8px; }
+  .mode-toggle-text { display: none; }
+}

@@ -19,6 +19,7 @@ function applyRoute() {
     route = "home";
   }
   if (route === "help") { renderHelp(); }   // 首次切到帮助页时填充内容（help.js 内部标志位保证只填一次）
+  if (route === "settings") { renderSettings(); }   // 首次切到设置页时填充内容（settings.js 内部标志位保证只填一次）
   // 先归零再换内容：新视图首帧渲染时已在顶部，无旧滚动位置回闪；instant 不受 scroll-behavior 干扰
   window.scrollTo({ top: 0, behavior: "instant" });
   Object.keys(ROUTES).forEach(function (key) {
