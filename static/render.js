@@ -62,7 +62,18 @@ function triggerFreshEntrance() {
 }
 
 function fillEvidence(id, text) {
-  document.getElementById(id).textContent = text || "（本段未返回内容）";
+  var el = document.getElementById(id);
+  el.textContent = text || "（本段未返回内容）";
+  var box = el.closest("details");
+  if (!box) { return; }
+  var old = box.querySelector(".demo-evidence-note");
+  if (old) { old.remove(); }
+  if (window.demoMode) {
+    var note = document.createElement("p");
+    note.className = "demo-evidence-note";
+    note.textContent = "本条结果来自内置示例数据";
+    box.insertBefore(note, el);
+  }
 }
 
 // ---------- 追问气泡：历史重绘与单条追加（textContent 赋值，天然不执行 HTML） ----------

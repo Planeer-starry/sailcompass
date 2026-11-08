@@ -343,3 +343,33 @@ html { scrollbar-gutter: stable; }
     transition-duration: .01ms !important;
   }
 }
+/* ═══ 六 · 演示模式（零配置体验）：橙色徽章 + 首页浅黄提示条 + 证据区灰字 ═══ */
+.demo-badge {
+  background: #FEF3C7; color: #92400E; font-size: 11px; line-height: 1.4;
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap; cursor: default;
+}
+#demo-badge.hidden { display: none; }
+
+.demo-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 24px; color: #92400E; font-size: 13px;
+}
+#demo-banner.hidden { display: none; }
+.demo-banner-close {
+  margin-left: auto; border: 0; background: transparent; color: #92400E;
+  font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 6px; cursor: pointer;
+}
+.demo-banner-close:hover { background: rgba(146, 64, 14, .08); }
+.demo-evidence-note { margin: 8px 0 0; font-size: 12px; color: #94A3B8; }
+
+/* 小屏：topbar 多一个「设置」链接后收紧间距；优先保证「设置」可达，帮助页仍可从工作台顶部进入 */
+@media (max-width: 768px) {
+  .topbar-inner { padding: 0 12px; }
+  .topbar-brand { font-size: 16px; }
+  .topbar-links { gap: 10px; }
+  .topbar-link { font-size: 12px; }
+  .topbar-link[data-nav="help"] { display: none; }
+  .demo-badge { font-size: 10px; padding: 2px 7px; }
+  .demo-banner { align-items: flex-start; }
+}

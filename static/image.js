@@ -83,7 +83,7 @@ function analyzeImage(file) {
     if (res.data.error) { handleAnalyzeError(res.data.error); return; }
     fillForm(res.data);
     setUploadStatus("");
-    showToast("已根据图片覆盖表单内容，请核对后生成");
+    showToast(res.data.demo ? "演示模式：已填入内置示例识别结果" : "已根据图片覆盖表单内容，请核对后生成");
   }).catch(function () {
     setAnalyzing(false);
     handleAnalyzeError("网络异常，无法连接识图服务");

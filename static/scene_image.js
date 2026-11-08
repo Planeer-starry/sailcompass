@@ -3,15 +3,17 @@
 var SCENE_LABELS = { outdoor: "户外", home: "家居", gift: "礼品" }; // 与后端白名单一致
 var selectedScene = "outdoor";   // 当前选中场景（默认户外）
 var imageConfigured = false;     // health 查询结果：未确认前一律按禁用处理
+var sceneDemoMode = false;       // health 返回的演示模式：生图直接返回内置示例图
 var generatingImage = false;     // 生成中：忽略重复点击
 var currentImageSrc = "";        // 当前展示图（本地落盘路径 / data URL / 远程 url / 示例图路径）
-var currentImageIsDemo = false;  // true = 接口失败后的兜底示例图
+var currentImageIsDemo = false;  // true = 内置示例图（演示模式）或接口失败后的兜底图
 var currentImageLocal = false;   // true = 后端已落盘的本地路径（同源，下载必成功）
 
 // ---------- 初始化：查 /api/health 的 image_configured 决定卡片可用态 ----------
 function setupSceneImage() {
   fetch("/api/health").then(function (resp) { return resp.json(); }).then(function (health) {
-    applyImageConfigured(!!health.image_configured);
+    sceneDemoMode = !!health.demo_mode;
+    applyImageConfigured(sceneDemoMode || !!health.image_configured);
   }).catch(function () {
     // 本地服务连不上时按未配置兜底（此时主流程同样不可用）
     applyImageConfigured(false);
@@ -68,7 +70,7 @@ function setGeneratingImage(loading) {
   icon.classList.toggle("spin", loading);
   document.getElementById("btn-gen-image-label").textContent = loading ? "生成中…" : "生成场景图";
   var status = document.getElementById("scene-status");
-  status.textContent = "正在生成，约 10–30 秒";
+  status.textContent = sceneDemoMode ? "演示模式：正在载入内置示例图…" : "正在生成，约 10–30 秒";
   status.classList.toggle("hidden", !loading);
   document.getElementById("scene-loading").classList.toggle("hidden", !loading);
 }
@@ -80,8 +82,10 @@ function showSceneResult(data) {
   if (!src) { showSceneError("生图接口未返回图片数据"); return; }
   currentImageSrc = src;
   currentImageLocal = !!data.image_path;
-  currentImageIsDemo = false;
-  document.getElementById("scene-badge").textContent = "AI 生成 · 需人工审核";
+  currentImageIsDemo = !!data.demo;
+  document.getElementById("scene-badge").textContent = data.demo
+    ? "内置示例图 · 需人工审核"
+    : "AI 生成 · 需人工审核";
   showSceneImage();
 }
 

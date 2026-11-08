@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>出海罗盘 SailCompass</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/vendor/tailwindcss.js?v=__BUILD_ID__"></script>
   <script>
     // Tailwind 主题：配色按视觉规格锁定
     tailwind.config = {
@@ -15,7 +15,7 @@
       },
     };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/static/vendor/marked.min.js?v=__BUILD_ID__"></script>
   <link rel="stylesheet" href="/static/style.css?v=__BUILD_ID__">
   <link rel="stylesheet" href="/static/help.css?v=__BUILD_ID__">
   <link rel="stylesheet" href="/static/motion.css?v=__BUILD_ID__">
@@ -28,6 +28,7 @@
   <script src="/static/help.js?v=__BUILD_ID__" defer></script>
   <script src="/static/tab.js?v=__BUILD_ID__" defer></script>
   <script src="/static/ask.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/demo.js?v=__BUILD_ID__" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
 
@@ -48,7 +49,9 @@
         <a class="topbar-link" data-nav="home" href="#/">首页</a>
         <a class="topbar-link" data-nav="work" href="#/work">工作台</a>
         <a class="topbar-link" data-nav="help" href="#/help">帮助</a>
+        <a class="topbar-link" data-nav="settings" href="#/settings">设置</a>
         <span class="topbar-divider" aria-hidden="true"></span>
+        <span id="demo-badge" class="demo-badge hidden" title="当前使用内置示例数据，未连接模型服务">演示模式</span>
         <span class="topbar-team">信风队 Tradewind</span>
       </div>
     </div>
@@ -79,6 +82,12 @@
           <span>✓ AI 只给建议，不自动发布</span>
         </p>
       </section>
+
+      <!-- 演示模式提示条：health 返回 demo_mode 时由 demo.js 显示；可关闭，localStorage 记忆 -->
+      <div id="demo-banner" class="demo-banner hidden">
+        <span>🧪 演示模式 · 当前使用内置示例数据。想看真实生成效果，点右上角『设置』配置模型服务</span>
+        <button type="button" class="demo-banner-close" title="关闭提示" onclick="dismissDemoBanner()">×</button>
+      </div>
 
       <!-- 小海螺回答卡片：提问后展开，对话式累积；收起后历史留内存，再次提问恢复 -->
       <div id="ask-panel" class="ask-panel hidden">

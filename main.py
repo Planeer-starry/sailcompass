@@ -1,5 +1,6 @@
-"""出海罗盘 SailCompass · 应用入口（3B：四段流水线 + 小海螺追问 + 阶段 4 识图）"""
+"""出海罗盘 SailCompass · 应用入口（3B：四段流水线 + 小海螺追问 + 阶段 4 识图 + 演示模式）"""
 import json
+import os
 import time
 from pathlib import Path
 
@@ -48,6 +49,42 @@ app.mount("/static", NoCacheStaticFiles(directory=str(BASE_DIR / "static")), nam
 BUILD_ID = str(int(time.time()))
 
 
+# ═══ 演示模式：没配文本模型时使用内置示例数据，零配置也能跑完整流程 ═══
+DEMO_RESULT_PATH = BASE_DIR / "demo_cache" / "保温杯_完整结果.json"
+DEMO_DATA_PATH = BASE_DIR / "prompts" / "demo_answers.json"
+DEMO_STEP_SECONDS = 0.6      # 每段模拟耗时：四段 2.4 秒，配合前端 1.5 秒轮询可在 3 秒内出结果
+_demo_data = None
+
+
+def text_configured() -> bool:
+    """文本模型三件套是否齐全：任一为空即视为未配置（进入演示模式）"""
+    return bool(os.getenv("API_BASE_URL") and os.getenv("API_KEY") and os.getenv("MODEL"))
+
+
+def demo_mode() -> bool:
+    """演示模式：没有文本模型配置时启用内置示例数据，不调用任何 LLM"""
+    return not text_configured()
+
+
+def _load_demo_data() -> dict:
+    """读取演示问答/识图/模型清单；首次读取后缓存，文件缺失时抛出明确异常"""
+    global _demo_data
+    if _demo_data is None:
+        _demo_data = json.loads(DEMO_DATA_PATH.read_text(encoding="utf-8"))
+    return _demo_data
+
+
+def _demo_ask_answer(question: str) -> str:
+    """演示模式首页问答：按关键词返回预置回答，未命中给兜底引导"""
+    ask = _load_demo_data()["ask"]
+    upper = question.upper()
+    if any(keyword.upper() in upper for keyword in ask["cert_keywords"]):
+        return ask["cert_answer"]
+    if any(keyword in question for keyword in ask["time_keywords"]):
+        return ask["time_answer"]
+    return ask["fallback_answer"]
+
+
 @app.get("/")
 def index():
     """首页：读 index.html 并把 __BUILD_ID__ 占位符替换为启动版本号
@@ -63,11 +100,14 @@ def index():
 
 @app.get("/api/health")
 def health():
-    """健康检查：存活 + 各能力配置状态（前端据此禁用未配置的功能，阶段 6 可复用）"""
+    """健康检查：存活 + 各能力配置状态 + 演示模式（未配文本模型时前端显示演示标识）"""
+    text_ok = text_configured()
     return {
         "ok": True,
         "vision_configured": agents.vision_configured(),
         "image_configured": image_gen.image_configured(),
+        "text_configured": text_ok,
+        "demo_mode": not text_ok,
     }
 
 
@@ -95,13 +135,37 @@ def _to_info(req: GenerateRequest) -> dict:
 
 @app.post("/api/generate")
 def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
-    """创建任务并立刻返回 task_id，流水线在后台跑（本轮只跑第一段）"""
+    """创建任务并立刻返回 task_id：真实模式跑 Agent，演示模式读内置示例数据"""
     if not req.product.strip():
         # 错误格式统一 {"error": ...}，不用 HTTPException 默认的 {"detail": ...}
         return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
     task_id = task_manager.create_task()
-    background_tasks.add_task(_run_pipeline, task_id, _to_info(req))
+    if demo_mode():
+        background_tasks.add_task(_run_demo_pipeline, task_id)
+    else:
+        background_tasks.add_task(_run_pipeline, task_id, _to_info(req))
     return {"task_id": task_id}
+
+
+def _run_demo_pipeline(task_id: str) -> None:
+    """演示流水线：四段依次推进进度并写入内置示例结果，全程不调用 LLM"""
+    try:
+        data = json.loads(DEMO_RESULT_PATH.read_text(encoding="utf-8"))
+        rows = [dict(row, action_status="待处理") for row in data.get("compliance", [])]
+        steps = [
+            ("insight", {"insight": data.get("insight", "")}),
+            ("listing", {"listing": data.get("listing", "")}),
+            ("compliance", {"compliance": rows, "compliance_raw": data.get("compliance_raw", "")}),
+            ("quality", {"quality": data.get("quality", "")}),
+        ]
+        for index, (stage, patch) in enumerate(steps, start=1):
+            task_manager.update_task(task_id, stage=stage, progress=index)
+            time.sleep(DEMO_STEP_SECONDS)
+            task_manager.append_result(task_id, **patch)
+        task_manager.update_task(task_id, status="done", stage="")
+    except Exception as e:
+        # 演示数据缺失/损坏：明确记为失败并保留中文原因，不抛 500
+        task_manager.update_task(task_id, status="failed", error=f"演示数据不可用：{e}")
 
 
 def _run_pipeline(task_id: str, info: dict) -> None:
@@ -173,6 +237,9 @@ def chat(req: ChatRequest):
     task = task_manager.get_task(req.task_id)
     if task is None:
         return JSONResponse(status_code=404, content={"error": "任务不存在"})
+    if demo_mode():
+        # 演示模式不读报告上下文、不调模型，返回固定说明
+        return {"answer": _load_demo_data()["chat_answer"], "demo": True}
     context = _build_chat_context(task["result"], req.tab)
     if not context.strip():
         return JSONResponse(status_code=400, content={"error": "本页暂无报告内容，请先生成"})
@@ -196,6 +263,9 @@ def ask(req: AskRequest):
         return JSONResponse(status_code=400, content={"error": "请先输入问题"})
     if len(req.question) > 200:
         return JSONResponse(status_code=400, content={"error": "问题太长了，请精简到 200 字以内"})
+    if demo_mode():
+        # 演示模式：不调模型，按关键词命中预置回答，未命中给兜底引导
+        return {"answer": _demo_ask_answer(req.question.strip()), "demo": True}
     try:
         answer = agents.ask_conch(req.question.strip(), req.history[-6:])
         return {"answer": answer}
@@ -214,7 +284,7 @@ def analyze_image(file: UploadFile | None = File(None)):
 
     同步路由（与 /api/chat 一致）：vision 调用最长 180 秒，放线程池执行，不阻塞事件循环。
     """
-    if not agents.vision_configured():
+    if not demo_mode() and not agents.vision_configured():
         return JSONResponse(
             status_code=400,
             content={"error": "识图未配置，请在 .env 填写 VISION_* 三项"},
@@ -223,6 +293,9 @@ def analyze_image(file: UploadFile | None = File(None)):
         return JSONResponse(status_code=400, content={"error": "请选择要识别的图片"})
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         return JSONResponse(status_code=400, content={"error": "只支持 JPG / PNG 图片"})
+    if demo_mode():
+        # 演示模式：不读图、不调 vision，直接返回内置识别结果
+        return {**_load_demo_data()["image_result"], "demo": True}
     image_bytes = file.file.read()
     if len(image_bytes) > MAX_IMAGE_BYTES:
         return JSONResponse(status_code=400, content={"error": "图片超过 20MB，请压缩后重试"})
@@ -253,6 +326,9 @@ def generate_image(req: GenerateImageRequest):
         return JSONResponse(status_code=400, content={"error": "非法场景：" + req.scene})
     if not req.product.strip():
         return JSONResponse(status_code=400, content={"error": "请先填写产品名称"})
+    if demo_mode():
+        # 演示模式：不调生图模型，按场景返回内置示例图
+        return {"image_path": f"/static/demo_images/{req.scene}.png", "demo": True}
     if not image_gen.image_configured():
         return JSONResponse(
             status_code=400,
