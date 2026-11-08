@@ -14,9 +14,10 @@
 @keyframes pop { from { transform: scale(.6); opacity: .4; } to { transform: scale(1); opacity: 1; } }
 @keyframes bubble-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes sidebar-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes panel-out { to { opacity: 0; transform: translateY(6px); } }
+
 @keyframes stage-pulse { 0% { opacity: .5; transform: scale(1); } 100% { opacity: 0; transform: scale(1.16); } }
 @keyframes shimmer-slide { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
 @keyframes ask-dot {
   0%, 60%, 100% { transform: translateY(0); opacity: .45; }
   30% { transform: translateY(-4px); opacity: 1; }
@@ -53,12 +54,8 @@
 #view-home.view-active .hero-title,
 #view-home.view-active .hero-sub,
 #view-home.view-active .hero-actions {
-  animation: fade-up 380ms var(--ease-out-expo) backwards;
+  animation: fade-up 380ms var(--ease-out-expo);
 }
-#view-home.view-active .hero-tag { animation-delay: 0ms; }
-#view-home.view-active .hero-title { animation-delay: 50ms; }
-#view-home.view-active .hero-sub { animation-delay: 100ms; }
-#view-home.view-active .hero-actions { animation-delay: 150ms; }
 
 /* 图层提示只给最关键的 3 个，避免滥用吃显存 */
 .hero-title, .hero-actions { will-change: transform, opacity; }
@@ -110,7 +107,7 @@
 }
 .ask-thinking .dot:nth-child(2) { animation-delay: .15s; }
 .ask-thinking .dot:nth-child(3) { animation-delay: .3s; }
-.ask-panel.ask-leaving { animation: panel-out 200ms var(--ease-in-expo) forwards; }
+
 
 /* ═══ 九 · 场景图生成中：条纹层 translateX 扫描，不再动 background-position ═══ */
 .scene-shimmer { position: relative; overflow: hidden; background: #F1F5F9; }

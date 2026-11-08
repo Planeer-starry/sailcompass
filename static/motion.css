@@ -314,3 +314,52 @@ html { scrollbar-gutter: stable; }
   .mode-toggle { margin-left: 8px; padding: 0 8px; }
   .mode-toggle-text { display: none; }
 }
+/* ═══ 意图理解：侧边栏「一句话说清需求」折叠区（结构由 intent.js 注入） ═══ */
+.intent-fold {
+  margin-bottom: 18px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #F8FAFC;
+  overflow: hidden;
+}
+.intent-fold-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: #1E3A8A;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.intent-fold-head:hover { background: rgba(30, 58, 138, .05); }
+.intent-arrow {
+  display: inline-block;
+  transition: transform var(--dur-base) var(--ease-glide);
+}
+.intent-fold.open .intent-arrow { transform: rotate(90deg); }
+.intent-body { padding: 0 12px 12px; }
+.intent-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  background: #FFFFFF;
+  font-size: 13px;
+}
+.intent-input:focus { outline: none; border-color: #1E3A8A; }
+.intent-fill.btn-secondary {
+  margin-top: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.intent-note { margin: 6px 0 0; font-size: 12px; color: #B45309; }
+.intent-inferred { margin: 6px 0 0; font-size: 12px; color: #475569; }
+.intent-lang-badge { margin: 6px 0 0; font-size: 12px; color: #1E3A8A; }

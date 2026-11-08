@@ -4,7 +4,7 @@ var askHistory = [];        // [{role:"user"|"assistant", content:"..."}] 最近
 var askPending = false;     // 提交中：忽略重复提交
 var askLastQuestion = "";   // 上次提交的问题：3 秒内同问题不重复提交
 var askLastTime = 0;        // 上次提交时刻
-var askCollapseTimer = null;   // 收起淡出定时器：展开时清掉，避免竞态把卡片又藏回去
+
 
 // ---------- 提交入口：卡片收起时先展开恢复对话；3 秒防重 → 发请求（回车/按钮共用） ----------
 function submitAsk() {
@@ -26,12 +26,19 @@ function submitAsk() {
   sendAsk(question);
 }
 
-// ---------- 发请求：提交瞬间先显示问题气泡 + 思考指示，回答到达后替换（不再漫长等待后突然蹦出） ----------
+// ---------- 提交入口：提交瞬间先显示问题气泡 + 思考指示，再交给意图分流 ----------
 function sendAsk(question) {
   askPending = true;
   setAskLoading(true);
   appendAskBubble("user", question);
   var thinking = appendThinkingBubble();
+  // intent.js 先判「生成 / 咨询」；脚本缺失时直接走原咨询路径
+  if (typeof routeAskIntent === "function") { routeAskIntent(question, thinking); }
+  else { requestAskAnswer(question, thinking); }
+}
+
+// ---------- 原咨询路径：POST /api/ask，回答到达后替换思考指示 ----------
+function requestAskAnswer(question, thinking) {
   fetch("/api/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -113,21 +120,13 @@ function pushAskHistory(question, answer) {
   askHistory.push({ role: "assistant", content: answer });
 }
 
-// ---------- 卡片展开/收起：收起先 200ms 淡出再隐藏（display:none 无法直接过渡） ----------
+// ---------- 卡片展开/收起：展开走入场动画，收起立即隐藏（不延时） ----------
 function openAskPanel() {
-  clearTimeout(askCollapseTimer);   // 清掉未完成的收起定时器，防止展开后又被藏回去（竞态）
-  var panel = document.getElementById("ask-panel");
-  panel.classList.remove("ask-leaving");
-  panel.classList.remove("hidden");
+  document.getElementById("ask-panel").classList.remove("hidden");
 }
 
 function collapseAsk() {
-  var panel = document.getElementById("ask-panel");
-  panel.classList.add("ask-leaving");
-  askCollapseTimer = setTimeout(function () {
-    panel.classList.remove("ask-leaving");
-    panel.classList.add("hidden");
-  }, 200);
+  document.getElementById("ask-panel").classList.add("hidden");
 }
 
 // ---------- 展开时滚到可见位置（Hero 可能已滚出视口）；尊重系统"减弱动态效果" ----------
@@ -154,12 +153,11 @@ function setAskLoading(loading) {
 new MutationObserver(function () {
   if (!document.body.classList.contains("route-home")) {
     askHistory = [];
-    clearTimeout(askCollapseTimer);
     var list = document.getElementById("ask-list");
     var panel = document.getElementById("ask-panel");
     var input = document.getElementById("ask-input");
     if (list) { list.innerHTML = ""; }
-    if (panel) { panel.classList.remove("ask-leaving"); panel.classList.add("hidden"); }
+    if (panel) { panel.classList.add("hidden"); }
     if (input) { input.value = ""; }
   }
 }).observe(document.body, { attributes: true, attributeFilter: ["class"] });

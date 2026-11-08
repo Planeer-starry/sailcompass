@@ -6,6 +6,21 @@
     "time_answer": "配置模型服务后，四段流水线（市场洞察 → 多语种文案 → 合规体检 → 交叉质检）通常需要 30–60 秒，取决于模型服务速度。\n\n演示模式使用内置示例数据，约 3 秒就能看到完整结果。",
     "fallback_answer": "演示模式下我只能回答几个常见问题，想看完整能力请配置模型服务。\n\n你可以试试问「CE 认证」「FDA」「LFGB」，或者问「生成要多久」。"
   },
+  "intent": {
+    "generate_keywords": ["生成", "写", "做一份", "出个", "出份", "报告", "文案"],
+    "product_keywords": ["保温杯", "杯"],
+    "preset": {
+      "intent": "generate",
+      "product": "不锈钢保温杯",
+      "category": "",
+      "platform": "Amazon 美国站",
+      "languages": ["English", "Español"],
+      "selling_points": "",
+      "params": "",
+      "note": "没听出产品类目、核心卖点和产品参数",
+      "inferred": []
+    }
+  },
   "chat_answer": "演示模式下追问不可用，配置模型服务后即可针对报告内容自由提问。",
   "image_result": {
     "product": "不锈钢保温杯",

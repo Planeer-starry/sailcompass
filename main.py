@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 import agents
 import image_gen
+import intent
 import llm_config
 import task_manager
 
@@ -44,6 +45,9 @@ class NoCacheStaticFiles(StaticFiles):
 
 # 静态资源只挂子路径，绝不挂根路径（避免吞掉 /api/* 路由）
 app.mount("/static", NoCacheStaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+# 意图理解路由：一句话解析产品字段 + 生成/咨询分流（实现见 intent.py，守 main.py 行数红线）
+app.include_router(intent.router)
 
 
 # 静态资源版本号：进程启动时刻（模块级常量）。重启即变 → 链接变 → 浏览器强制拉新文件；部署本来就要重启，等于"部署即生效"，零维护
