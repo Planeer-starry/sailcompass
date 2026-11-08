@@ -183,6 +183,26 @@ def chat(req: ChatRequest):
         return JSONResponse(status_code=500, content={"error": f"回答失败：{e}"})
 
 
+class AskRequest(BaseModel):
+    """首页自由问答请求：问题 + 前端维护的最近对话历史"""
+    question: str
+    history: list[dict] = []
+
+
+@app.post("/api/ask")
+def ask(req: AskRequest):
+    """小海螺自由问答：无需任务/报告，纯常识问答；历史只取最近 3 轮（6 条）防 token 膨胀"""
+    if not req.question.strip():
+        return JSONResponse(status_code=400, content={"error": "请先输入问题"})
+    if len(req.question) > 200:
+        return JSONResponse(status_code=400, content={"error": "问题太长了，请精简到 200 字以内"})
+    try:
+        answer = agents.ask_conch(req.question.strip(), req.history[-6:])
+        return {"answer": answer}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"回答失败：{e}"})
+
+
 
 ALLOWED_IMAGE_TYPES = ("image/jpeg", "image/png")  # 只收 JPG / PNG
 MAX_IMAGE_BYTES = 20 * 1024 * 1024                 # 大小上限 20MB

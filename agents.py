@@ -214,6 +214,14 @@ def answer_question(task_id: str, tab: str, context: str, question: str) -> str:
     task_manager.append_chat(task_id, tab, question, answer)
     return answer
 
+# ---------- 小海螺 · 首页自由问答（独立于 Tab 追问：无需任务/报告，纯常识问答） ----------
+def ask_conch(question: str, history: list) -> str:
+    """首页自由问答：无报告上下文，history 为前端带来的最近对话（已由路由层截到 6 条）"""
+    messages = [{"role": "system", "content": load_prompt("ask")}]
+    messages += [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": question})
+    return call_llm_messages(messages, temperature=0.3)
+
 # ---------- 阶段 4 · 产品图识别 ----------
 # vision 客户端惰性单例：与文本客户端分开（BASE_URL / KEY / MODEL 三项独立配置）
 _vision_client = None

@@ -70,6 +70,7 @@ function setGeneratingImage(loading) {
   var status = document.getElementById("scene-status");
   status.textContent = "正在生成，约 10–30 秒";
   status.classList.toggle("hidden", !loading);
+  document.getElementById("scene-loading").classList.toggle("hidden", !loading);
 }
 
 // ---------- 成功：直接展示落盘原图（服务商水印保留，页面 CSS 角标标识 AI 生成）----------
@@ -86,6 +87,7 @@ function showSceneResult(data) {
 
 function showSceneImage() {
   document.getElementById("scene-img").src = currentImageSrc;
+  document.getElementById("scene-loading").classList.add("hidden");
   document.getElementById("scene-result").classList.remove("hidden");
 }
 

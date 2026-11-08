@@ -18,6 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="/static/style.css?v=__BUILD_ID__">
   <link rel="stylesheet" href="/static/help.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/motion.css?v=__BUILD_ID__">
   <script src="/static/glossary.js?v=__BUILD_ID__" defer></script>
   <script src="/static/render.js?v=__BUILD_ID__" defer></script>
   <script src="/static/app.js?v=__BUILD_ID__" defer></script>
@@ -25,6 +26,8 @@
   <script src="/static/image.js?v=__BUILD_ID__" defer></script>
   <script src="/static/scene_image.js?v=__BUILD_ID__" defer></script>
   <script src="/static/help.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/tab.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/ask.js?v=__BUILD_ID__" defer></script>
 </head>
 <body class="bg-page text-base min-h-screen">
 
@@ -64,7 +67,28 @@
           <button type="button" class="hero-btn-primary" onclick="startDiagnosis()">🚀 开始出海诊断</button>
           <button type="button" class="hero-btn-ghost" onclick="scrollToSteps()">📖 了解怎么用</button>
         </div>
+        <!-- 小海螺自由问答输入区：还没生成结果也能直接问（回答卡片渲染在 Hero 下方，避免 Hero 高度乱跳） -->
+        <div class="hero-ask">
+          <input id="ask-input" type="text" placeholder="有出海问题？直接问，比如：CE 认证一定要做吗？" onkeydown="if(event.key==='Enter'){event.preventDefault();submitAsk();}">
+          <button id="ask-btn" type="button" class="btn-primary hero-ask-btn" onclick="submitAsk()"><span id="ask-btn-icon" class="inline-block">🐚</span> <span id="ask-btn-label">问小海螺</span></button>
+        </div>
+        <!-- 三条信任标签：首页的"一句话说服"，加回 Hero 最底部 -->
+        <p class="hero-trust">
+          <span>✓ 不懂跨境术语也能用</span>
+          <span>✓ 每条风险都标依据</span>
+          <span>✓ AI 只给建议，不自动发布</span>
+        </p>
       </section>
+
+      <!-- 小海螺回答卡片：提问后展开，对话式累积；收起后历史留内存，再次提问恢复 -->
+      <div id="ask-panel" class="ask-panel hidden">
+        <div class="ask-panel-head">
+          <span class="ask-panel-title">🐚 小海螺</span>
+          <button type="button" class="btn-ghost ask-collapse" onclick="collapseAsk()">收起</button>
+        </div>
+        <div id="ask-list" class="ask-list"></div>
+        <p class="ask-tip">想要针对你自己产品的完整报告？点上面的『开始出海诊断』</p>
+      </div>
 
       <!-- 继续上次结果：生成过结果（window.lastResult 有内容）才显示，点击回工作台 -->
       <a id="resume-bar" class="resume-bar hidden" href="#/work"></a>
@@ -189,7 +213,7 @@
         <input id="image-input" type="file" accept="image/jpeg,image/png" class="hidden">
       </div>
 
-      <button id="btn-generate" class="btn-primary w-full h-12 rounded-[10px] bg-brand text-white font-medium hover:bg-[#172554]" onclick="generateAll()"><span id="btn-icon" class="inline-block">🚀</span> <span id="btn-label">开始生成</span></button>
+      <button id="btn-generate" class="btn-primary w-full h-12" onclick="generateAll()"><span id="btn-icon" class="inline-block">🚀</span> <span id="btn-label">开始生成</span></button>
 
       <hr class="border-line my-6">
 
@@ -207,15 +231,12 @@
   <!-- ═══ 右侧主区（work 视图容器，#/work） ═══ -->
   <main id="main" class="view md:ml-80 px-4 md:px-8 py-6">
     <div class="max-w-4xl">
-      <a class="back-home pl-[72px] md:pl-0" href="#/">← 返回首页</a>
-      <a class="back-home back-help" href="#/help">❓ 帮助</a>
-      <header class="mb-6 pl-[72px] md:pl-0">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
-          <h2 class="text-2xl font-bold text-brand">🧭 出海罗盘 SailCompass</h2>
-          <span class="text-sm text-[#64748B]">信风队 Tradewind</span>
-        </div>
-        <p class="text-slate-500 mt-1">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</p>
-      </header>
+      <!-- 顶部行：返回/帮助链接 + 流程链小字说明（品牌栏已删，产品名与队名由常驻 topbar 承担） -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 pl-[72px] md:pl-0 mb-6">
+        <a class="back-home" href="#/">← 返回首页</a>
+        <a class="back-home back-help" href="#/help">❓ 帮助</a>
+        <span class="ml-auto text-[13px] text-[#64748B]">市场洞察 → 多语种 Listing → 合规体检 → 交叉质检</span>
+      </div>
 
       <!-- 生成进度：四段依次点亮；连续 60 秒无进展时显示慢提示 -->
       <div class="flex flex-wrap items-center gap-2 mb-3 text-sm">
@@ -232,7 +253,7 @@
       <!-- 错误条：生成失败/超时时显示，带重试按钮 -->
       <div id="error-bar" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-6 flex items-center justify-between gap-3">
         <span id="error-msg" class="text-sm"></span>
-        <button class="btn-primary shrink-0 h-10 px-4 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateAll()">重试</button>
+        <button class="btn-primary shrink-0 h-10 px-4 text-sm" onclick="generateAll()">重试</button>
       </div>
 
       <!-- Tab 导航（id=tabs 保留：Hero 次按钮原滚动锚点，现仅作语义标识） -->
@@ -249,13 +270,13 @@
           <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示市场洞察结果。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-insight" class="evidence-pre">（生成后显示原文）</pre></details>
-        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('insight')">⬇️ 导出</button></div>
+        <div class="mt-4"><button class="btn-secondary h-12 px-6" onclick="exportTab('insight')">⬇️ 导出</button></div>
         <div id="chat-insight" class="chat-box mt-6">
           <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
           <div class="chat-list"></div>
           <div class="flex gap-2 mt-2">
             <input type="text" placeholder="例如：待人工核实清单里第一条该怎么处理？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
-            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('insight', this)">发送</button>
+            <button class="btn-primary h-11 px-5 text-sm" onclick="sendChat('insight', this)">发送</button>
           </div>
         </div>
       </section>
@@ -266,7 +287,7 @@
           <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示各目标语言的 Listing 文案。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-listing" class="evidence-pre">（生成后显示原文）</pre></details>
-        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('listing')">⬇️ 导出</button></div>
+        <div class="mt-4"><button class="btn-secondary h-12 px-6" onclick="exportTab('listing')">⬇️ 导出</button></div>
 
         <!-- 场景图生成（阶段 5）：独立卡片；未配置灰字禁用、失败显示示例图，均不影响其他区域 -->
         <div class="mt-6 p-6 bg-white border border-line rounded-2xl card-shadow">
@@ -275,9 +296,10 @@
             <button type="button" class="scene-btn h-10 px-4 rounded-lg border border-line bg-white text-sm active" data-scene="outdoor" disabled onclick="selectScene(this)">🌲 户外</button>
             <button type="button" class="scene-btn h-10 px-4 rounded-lg border border-line bg-white text-sm" data-scene="home" disabled onclick="selectScene(this)">🏠 家居</button>
             <button type="button" class="scene-btn h-10 px-4 rounded-lg border border-line bg-white text-sm" data-scene="gift" disabled onclick="selectScene(this)">🎁 礼品</button>
-            <button id="btn-gen-image" class="btn-primary h-10 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" disabled onclick="generateSceneImage()"><span id="btn-gen-image-icon" class="inline-block">🎨</span> <span id="btn-gen-image-label">生成场景图</span></button>
+            <button id="btn-gen-image" class="btn-primary h-10 px-5 text-sm" disabled onclick="generateSceneImage()"><span id="btn-gen-image-icon" class="inline-block">🎨</span> <span id="btn-gen-image-label">生成场景图</span></button>
           </div>
           <p id="scene-status" class="text-[13px] text-brand hidden"></p>
+          <div id="scene-loading" class="scene-shimmer hidden"></div>
           <p id="scene-unconfigured" class="text-[13px] text-[#94A3B8] hidden">生图未配置，可在设置里填写</p>
           <div id="scene-result" class="hidden mt-3">
             <div class="scene-wrap">
@@ -285,13 +307,13 @@
               <span id="scene-badge" class="ai-badge">AI 生成 · 需人工审核</span>
             </div>
             <div class="flex gap-3 mt-3">
-              <button id="btn-download-image" class="btn-primary h-11 px-6 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="downloadSceneImage()">⬇️ 下载</button>
-              <button id="btn-regen-image" class="btn-primary h-11 px-6 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateSceneImage()">重新生成</button>
+              <button id="btn-download-image" class="btn-secondary h-11 px-6 text-sm" onclick="downloadSceneImage()">⬇️ 下载</button>
+              <button id="btn-regen-image" class="btn-secondary h-11 px-6 text-sm" onclick="generateSceneImage()">重新生成</button>
             </div>
           </div>
           <div id="scene-error" class="hidden mt-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
             <span id="scene-error-msg" class="text-sm"></span>
-            <button class="btn-primary shrink-0 h-10 px-4 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="generateSceneImage()">重试</button>
+            <button class="btn-primary shrink-0 h-10 px-4 text-sm" onclick="generateSceneImage()">重试</button>
           </div>
         </div>
 
@@ -300,7 +322,7 @@
           <div class="chat-list"></div>
           <div class="flex gap-2 mt-2">
             <input type="text" placeholder="例如：英文标题里的 12-Hour 能保留吗？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
-            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('listing', this)">发送</button>
+            <button class="btn-primary h-11 px-5 text-sm" onclick="sendChat('listing', this)">发送</button>
           </div>
         </div>
       </section>
@@ -314,8 +336,8 @@
         <div class="mt-6 p-4 bg-page border border-line rounded-lg">
           <label class="flex items-start gap-2"><input id="review-check" type="checkbox" class="mt-1" onchange="onReviewCheck()"><span>我已逐条复核上述风险项，确认可以交付</span></label>
           <div class="flex flex-wrap items-center gap-3 mt-4">
-            <button id="btn-mark" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="markReviewed()">标记为已审核</button>
-            <button id="btn-export-compliance" class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" disabled onclick="exportTab('compliance')">⬇️ 导出</button>
+            <button id="btn-mark" class="btn-secondary h-12 px-6" disabled onclick="markReviewed()">标记为已审核</button>
+            <button id="btn-export-compliance" class="btn-secondary h-12 px-6" disabled onclick="exportTab('compliance')">⬇️ 导出</button>
             <span id="red-pending-tip" class="red-pending-tip hidden"></span>
           </div>
           <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
@@ -326,7 +348,7 @@
           <div class="chat-list"></div>
           <div class="flex gap-2 mt-2">
             <input type="text" placeholder="例如：第二条为什么判红？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
-            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('compliance', this)">发送</button>
+            <button class="btn-primary h-11 px-5 text-sm" onclick="sendChat('compliance', this)">发送</button>
           </div>
         </div>
       </section>
@@ -337,13 +359,13 @@
           <p class="text-slate-400">点左侧「🚀 开始生成」后，此处显示交叉质检结果。</p>
         </div>
         <details class="evidence mt-4"><summary>📎 证据与来源</summary><pre id="evidence-quality" class="evidence-pre">（生成后显示原文）</pre></details>
-        <div class="mt-4"><button class="btn-primary h-12 px-6 rounded-[10px] bg-brand text-white hover:bg-[#172554]" onclick="exportTab('quality')">⬇️ 导出</button></div>
+        <div class="mt-4"><button class="btn-secondary h-12 px-6" onclick="exportTab('quality')">⬇️ 导出</button></div>
         <div id="chat-quality" class="chat-box mt-6">
           <p class="text-sm font-semibold mb-2">💬 对这页还有疑问？</p>
           <div class="chat-list"></div>
           <div class="flex gap-2 mt-2">
             <input type="text" placeholder="例如：改进建议第一条具体怎么落地？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
-            <button class="btn-primary h-11 px-5 rounded-[10px] bg-brand text-white text-sm hover:bg-[#172554]" onclick="sendChat('quality', this)">发送</button>
+            <button class="btn-primary h-11 px-5 text-sm" onclick="sendChat('quality', this)">发送</button>
           </div>
         </div>
       </section>

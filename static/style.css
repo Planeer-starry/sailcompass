@@ -211,8 +211,6 @@ details.evidence[open] summary::before { content: "▾"; }
 body:not(.route-work) #sidebar,
 body:not(.route-work) #btn-drawer { display: none; }
 
-/* work 视图：隐藏顶部导航条（用主区内现有品牌栏，两者字号/色值/分隔线一致） */
-body.route-work #topbar { display: none; }
 
 /* ═══ 顶部导航条（home/settings 视图共用）：品牌字号/色值对齐工作台品牌栏（24px/700/#1E3A8A） ═══ */
 #topbar { background: #FFFFFF; border-bottom: 1px solid #E2E8F0; }

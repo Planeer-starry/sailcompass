@@ -19,6 +19,8 @@ function applyRoute() {
     route = "home";
   }
   if (route === "help") { renderHelp(); }   // 首次切到帮助页时填充内容（help.js 内部标志位保证只填一次）
+  // 先归零再换内容：新视图首帧渲染时已在顶部，无旧滚动位置回闪；instant 不受 scroll-behavior 干扰
+  window.scrollTo({ top: 0, behavior: "instant" });
   Object.keys(ROUTES).forEach(function (key) {
     document.getElementById(ROUTES[key]).classList.toggle("view-active", key === route);
   });
@@ -27,7 +29,6 @@ function applyRoute() {
   updateNavActive(route);
   updateResumeBar();
   closeDrawer();   // 兜底：小屏抽屉开着切视图时强制收起
-  window.scrollTo(0, 0);   // 视图切换滚动复位（SPA 习惯：进新页从顶部开始）
 }
 
 // ---------- topbar 导航高亮：当前视图对应链接加深 ----------

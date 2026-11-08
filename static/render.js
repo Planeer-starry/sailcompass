@@ -49,6 +49,16 @@ function renderAllResults(result) {
   fillEvidence("evidence-listing", result.listing);
   fillEvidence("evidence-compliance", result.compliance_raw);
   fillEvidence("evidence-quality", result.quality);
+  triggerFreshEntrance();
+}
+
+// ---------- 新结果入场动画：给四个面板加 .result-fresh（motion.css 依次落下），600ms 后摘除 ----------
+function triggerFreshEntrance() {
+  var panels = document.querySelectorAll(".tab-panel");
+  panels.forEach(function (p) { p.classList.add("result-fresh"); });
+  setTimeout(function () {
+    panels.forEach(function (p) { p.classList.remove("result-fresh"); });
+  }, 600);
 }
 
 function fillEvidence(id, text) {
