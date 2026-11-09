@@ -121,6 +121,25 @@ function rowsToMarkdown(rows) {
   return md;
 }
 
+// ---------- 导出下载辅助：解析后端 RFC 5987 文件名 + 触发 Blob 下载（Word 等二进制导出共用） ----------
+function fileNameFromHeader(disposition) {
+  var match = /filename\*=UTF-8''([^;]+)/i.exec(disposition || "");
+  if (!match) { return "出海罗盘报告.docx"; }
+  try {
+    return decodeURIComponent(match[1]);
+  } catch (e) {
+    return "出海罗盘报告.docx";
+  }
+}
+
+function saveBlob(blob, filename) {
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // ---------- HTML 全量转义（合规表格单元格用） ----------
 function escapeHtml(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")

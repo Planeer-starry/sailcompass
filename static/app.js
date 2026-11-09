@@ -92,14 +92,14 @@ function resetReview() {
 }
 
 
-// ---------- toast：顶部居中，2 秒自动消失 ----------
+// ---------- toast：顶部居中，默认 2 秒消失（失败提示可传更长时长） ----------
 var toastTimer = null;
-function showToast(msg) {
+function showToast(msg, duration) {
   var toast = document.getElementById("toast");
   toast.textContent = msg;
   toast.classList.remove("hide");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function () { toast.classList.add("hide"); }, 2000);
+  toastTimer = setTimeout(function () { toast.classList.add("hide"); }, duration || 2000);
 }
 
 // ---------- 收集表单六字段 ----------
@@ -273,10 +273,21 @@ function resetReviewGate() {
   updateReviewGate();   // 新结果无 action_status → 红字显示 N 起引导作用（无红项则不显示）
 }
 
-// ---------- 导出 Word：交给后端生成 .docx 并下载（整页跳转即可，无需 Blob） ----------
+// ---------- 导出 Word：先请求后下载；未生成/任务失效在当前页提示，不跳转裸 JSON 页面 ----------
 function exportWord() {
-  if (!currentTaskId) { showToast("请先生成报告，再导出 Word"); return; }
-  window.location.href = "/api/export-docx/" + window.currentTaskId;
+  if (!currentTaskId) { showToast("当前还没有报告，请先生成后再导出", 4000); return; }
+  fetch("/api/export-docx/" + currentTaskId).then(function (res) {
+    if (!res.ok) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        throw new Error(data.error || "导出失败（HTTP " + res.status + "）");
+      });
+    }
+    return res.blob().then(function (blob) {
+      saveBlob(blob, fileNameFromHeader(res.headers.get("Content-Disposition")));
+    });
+  }).catch(function (err) {
+    showToast(err.message || "导出失败，请稍后重试", 4000);
+  });
 }
 
 // ---------- 导出：当前 Tab 内容下载为 .md（Blob + a.download） ----------
