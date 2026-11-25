@@ -1,4 +1,14 @@
 .env
-__pycache__/
 .venv/
-static/generated/
+__pycache__/
+*.pyc
+.DS_Store
+frontend/generated/*
+!frontend/generated/.gitkeep
+# 发布仓库补充
+.env
+.venv/
+__pycache__/
+*.pyc
+backend/app/static/generated/
+node_modules/

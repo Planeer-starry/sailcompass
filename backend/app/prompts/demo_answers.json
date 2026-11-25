@@ -1,0 +1,109 @@
+{
+  "ask": {
+    "cert_keywords": [
+      "认证",
+      "CE",
+      "FDA",
+      "LFGB"
+    ],
+    "cert_answer": "CE、FDA、LFGB 是不同市场的合规要求，先分清适用市场：\n\n- **CE**：欧盟市场准入标志。电子、玩具、医疗器械等类目通常强制，需要对应指令的检测报告和符合性声明。\n- **FDA**：美国市场。食品接触材料、医疗器械、化妆品等由 FDA 监管；食品接触类一般要符合性声明或检测报告。\n- **LFGB**：德国食品接触材料测试，常作为进入欧洲市场的补充证明。\n\n是否需要做、做哪几项，取决于产品类目和目标站点。建议先确认平台类目要求，再向检测机构询价。\n\n（演示模式回答，仅供参考，不构成合规结论）",
+    "time_keywords": [
+      "多久",
+      "时间"
+    ],
+    "time_answer": "配置模型服务后，四段流水线（市场洞察 → 多语种文案 → 合规体检 → 交叉质检）通常需要 30–60 秒，取决于模型服务速度。\n\n演示模式使用内置示例数据，约 3 秒就能看到完整结果。",
+    "fallback_answer": "演示模式下我只能回答几个常见问题，想看完整能力请配置模型服务。\n\n你可以试试问「CE 认证」「FDA」「LFGB」，或者问「生成要多久」。"
+  },
+  "intent": {
+    "generate_keywords": [
+      "生成",
+      "写",
+      "做一份",
+      "出个",
+      "出份",
+      "报告",
+      "文案"
+    ],
+    "product_keywords": [
+      "保温杯",
+      "杯"
+    ],
+    "preset": {
+      "intent": "generate",
+      "product": "不锈钢保温杯",
+      "category": "",
+      "platform": "Amazon 美国站",
+      "languages": [
+        "English",
+        "Español"
+      ],
+      "selling_points": "",
+      "params": "",
+      "note": "没听出产品类目、核心卖点和产品参数",
+      "inferred": []
+    }
+  },
+  "chat_answer": "演示模式下追问不可用，配置模型服务后即可针对报告内容自由提问。",
+  "image_result": {
+    "product": "不锈钢保温杯",
+    "category": "户外用品",
+    "selling_points": [
+      "316 不锈钢内胆",
+      "12 小时保温",
+      "内置茶隔"
+    ],
+    "params": {
+      "容量": "500ml",
+      "材质": "316 不锈钢",
+      "净重": "320g"
+    },
+    "uncertain": [
+      "容量",
+      "材质"
+    ],
+    "image_type": "product",
+    "source_text": ""
+  },
+  "model_presets": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek（默认）",
+      "base_url": "https://api.deepseek.com/v1",
+      "text_model": "deepseek-chat",
+      "vision_model": "deepseek-flash",
+      "image_model": "",
+      "free": false,
+      "note": "国内直连快，文本便宜"
+    },
+    {
+      "id": "zhipu",
+      "name": "智谱 AI（全部免费）",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "text_model": "glm-4-flash",
+      "vision_model": "glm-4v-flash",
+      "image_model": "cogview-3-flash",
+      "free": true,
+      "note": "文本/识图/生图都有免费额度"
+    },
+    {
+      "id": "siliconflow",
+      "name": "硅基流动（送额度）",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "text_model": "Qwen/Qwen2.5-7B-Instruct",
+      "vision_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "image_model": "",
+      "free": true,
+      "note": "注册送额度"
+    },
+    {
+      "id": "custom",
+      "name": "自定义",
+      "base_url": "",
+      "text_model": "",
+      "vision_model": "",
+      "image_model": "",
+      "free": false,
+      "note": "任何 OpenAI 兼容服务"
+    }
+  ]
+}

@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>出海罗盘 SailCompass · 出海报告</title>
+  <script src="/static/vendor/tailwindcss.js?v=__BUILD_ID__"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { brand: "#1E3A8A", page: "#F6F8FC", line: "#E3EAF5" },
+        },
+      },
+    };
+  </script>
+  <script src="/static/vendor/marked.min.js?v=__BUILD_ID__"></script>
+  <link rel="stylesheet" href="/static/style.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/layout.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/help.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/motion.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/anim.css?v=__BUILD_ID__">
+  <link rel="stylesheet" href="/static/responsive.css?v=__BUILD_ID__">
+  <script src="/static/glossary.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/catalog.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/render.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/app.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/router.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/nav.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/image.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/listing_image.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/field_image.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/translate.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/scene_image.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/help.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/settings.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/tab.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/ask.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/demo.js?v=__BUILD_ID__" defer></script>
+  <script src="/static/intent.js?v=__BUILD_ID__" defer></script>
+</head>
+<body class="route-home">
+
+  <div id="toast" class="hide fixed top-4 left-1/2 -translate-x-1/2 z-[90] bg-[#1E293B] text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
+  <div id="export-modal" class="export-modal hidden">
+    <div class="export-box export-box-wide">
+      <p class="export-title">导出</p>
+      <div id="export-options" class="export-options">
+        <div class="export-section" data-section="insight">
+          <label class="export-option export-section-head"><input type="checkbox" value="insight" onchange="syncExportRow(this)"> 市场洞察</label>
+          <div class="export-version-picker">
+            <button type="button" class="export-version-toggle" data-section="insight" onclick="toggleVersionPicker('insight', this)">选择版本 ▾</button>
+            <div class="export-version-list hidden" id="export-versions-insight"></div>
+          </div>
+        </div>
+        <div class="export-section" data-section="listing">
+          <label class="export-option export-section-head"><input type="checkbox" value="listing" onchange="syncExportRow(this)"> 上架文案</label>
+          <div class="export-version-picker">
+            <button type="button" class="export-version-toggle" data-section="listing" onclick="toggleVersionPicker('listing', this)">选择版本 ▾</button>
+            <div class="export-version-list hidden" id="export-versions-listing"></div>
+          </div>
+        </div>
+        <div class="export-section" data-section="compliance">
+          <label class="export-option export-section-head"><input type="checkbox" value="compliance" onchange="syncExportRow(this)"> 合规体检</label>
+          <div class="export-version-picker">
+            <button type="button" class="export-version-toggle" data-section="compliance" onclick="toggleVersionPicker('compliance', this)">选择版本 ▾</button>
+            <div class="export-version-list hidden" id="export-versions-compliance"></div>
+          </div>
+        </div>
+        <div class="export-section" data-section="quality">
+          <label class="export-option export-section-head"><input type="checkbox" value="quality" onchange="syncExportRow(this)"> 交叉质检</label>
+          <div class="export-version-picker">
+            <button type="button" class="export-version-toggle" data-section="quality" onclick="toggleVersionPicker('quality', this)">选择版本 ▾</button>
+            <div class="export-version-list hidden" id="export-versions-quality"></div>
+          </div>
+        </div>
+        <div class="export-section" data-section="translate">
+          <label class="export-option export-section-head"><input type="checkbox" value="translate" onchange="syncExportRow(this)"> 多语翻译</label>
+          <div class="export-version-picker">
+            <button type="button" class="export-version-toggle" data-section="translate" onclick="toggleVersionPicker('translate', this)">选择版本 ▾</button>
+            <div class="export-version-list hidden" id="export-versions-translate"></div>
+          </div>
+        </div>
+      </div>
+      <div id="export-format" class="export-formats">
+        <label class="export-option"><input type="radio" name="export-format" value="word" checked> Word（.docx）</label>
+        <label class="export-option"><input type="radio" name="export-format" value="md"> Markdown（.md）</label>
+        <label class="export-option"><input type="radio" name="export-format" value="pdf"> PDF（.pdf）</label>
+      </div>
+      <p class="export-hint">先勾选段落，再为每段选择版本（首次直出即第 1 版）；没选版本不能导出。</p>
+      <p class="export-hint" id="export-version-hint"></p>
+      <div class="export-actions">
+        <button type="button" class="btn-secondary h-10 px-4 text-sm" onclick="closeExportModal()">取消</button>
+        <button type="button" class="btn-primary h-10 px-5 text-sm" onclick="confirmExport()">导出</button>
+      </div>
+    </div>
+  </div>
+  <div id="revision-modal" class="export-modal hidden">
+    <div class="export-box revision-box">
+      <div class="revision-head">
+        <p class="export-title">改写历史 · <span id="rev-modal-section"></span></p>
+        <span class="revision-head-badge" id="rev-modal-count">当前第 1 版</span>
+      </div>
+      <p class="export-hint" id="rev-modal-hint">首次直出会存为第 1 版；之后每次改写或重算，新内容生成新版本并保留旧版。</p>
+      <div id="rev-modal-list" class="rev-list"></div>
+      <div class="export-actions">
+        <button type="button" class="btn-secondary h-10 px-4 text-sm" onclick="toggleAllRevisions()">全选/取消</button>
+        <button type="button" class="btn-danger h-10 px-4 text-sm" onclick="deleteSelectedRevisions()">删除选中</button>
+        <button type="button" class="btn-ghost h-10 px-4 text-sm" onclick="viewLatestRevision()">查看最新版本</button>
+        <button type="button" class="btn-primary h-10 px-5 text-sm" onclick="closeRevisionModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div id="scene-limit-modal" class="required-modal hidden">
+    <div class="required-box">
+      <p class="required-title">⚠️ 历史图片将超过 60 张</p>
+      <p id="scene-limit-desc" class="required-desc">当前已保存 0 张，本次要生成 1 张。请先删除一些历史图片再生成。</p>
+      <div class="export-actions">
+        <button type="button" class="btn-secondary h-10 px-4 text-sm" onclick="closeSceneLimitModal()">取消</button>
+        <button type="button" class="btn-primary h-10 px-5 text-sm" onclick="goDeleteSceneHistory()">去删除历史图片</button>
+      </div>
+    </div>
+  </div>
+  <div id="required-modal" class="required-modal hidden">
+    <div class="required-box">
+      <p id="required-title" class="required-title">⚠️ 还差一步</p>
+      <p id="required-desc" class="required-desc">请先填写产品名称，这是生成报告的必要信息。</p>
+      <button type="button" class="btn-primary h-11 px-6" onclick="focusRequiredField()">去填写</button>
+    </div>
+  </div>
+  
+  <div id="overlay" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="closeDrawer()"></div>
+  <button id="btn-drawer" class="md:hidden fixed top-[74px] left-4 z-[70] w-10 h-10 rounded-lg bg-white border border-line text-xl" onclick="toggleDrawer()">☰</button>
+
+  <!-- ═══ 全站固定横条：logo + 模式切换 + 返回靠左，功能入口靠右 ═══ -->
+  <header id="app-topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        <a class="topbar-brand" href="#/">🧭 <span class="brand-cn">出海罗盘</span><span class="brand-en">SailCompass</span></a>
+        <a id="top-return" class="top-return" href="#/">← 返回首页</a>
+      </div>
+      <nav class="topbar-links">
+        <a class="topbar-link" data-nav="help" href="#/help">跨境指引</a>
+        <a class="topbar-link" data-nav="about" href="#/about">罗盘介绍</a>
+        <a class="topbar-link" data-nav="settings" href="#/settings">设置</a>
+        <span class="topbar-team">信风队 Tradewind</span>
+        <span class="version-badge">v4.9</span>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══ 首页 ═══ -->
+  <div id="view-home" class="view">
+    <div class="home-wrap">
+
+      <section class="hero mb-6">
+        <span class="hero-tag">东莞制造 · 出海第一步</span>
+        <h1 class="hero-title">让东莞的好货，说对海外的语言</h1>
+        <p class="hero-sub">填一次产品资料，一次生成市场洞察、上架文案（中文）、合规体检和交叉质检四份报告</p>
+        <div class="hero-action-grid">
+          <button type="button" class="hero-btn-primary" onclick="startDiagnosis()"><span class="hero-box-icon">🚀</span>生成出海报告</button>
+          <button type="button" class="hero-btn-ghost" onclick="location.hash='#/ask'"><span class="hero-box-icon">🐚</span>聆听您的诉求</button>
+          <a class="home-guide-card hero-guide-solid" href="#/help">
+            <span class="home-guide-icon">?</span>
+            <span class="home-guide-text"><strong>跨境小白指引</strong></span>
+            <span class="home-guide-arrow">→</span>
+          </a>
+          <a class="home-guide-card hero-guide-ghost" href="#/about">
+            <span class="home-guide-icon">🧭</span>
+            <span class="home-guide-text"><strong>罗盘使用指引</strong></span>
+            <span class="home-guide-arrow">→</span>
+          </a>
+        </div>
+        <p class="hero-trust">
+          <span>✓ 不懂跨境术语也能用</span>
+          <span>✓ 每条风险都标依据</span>
+          <span>✓ AI 只给建议，不自动发布</span>
+        </p>
+      </section>
+
+      <div id="demo-banner" class="demo-banner hidden">
+        <span>当前为演示数据：结果按你填写的信息组装，不调用模型。配置 API 后可获得真实生成。</span>
+        <button type="button" class="demo-banner-close" title="关闭提示" onclick="dismissDemoBanner()">×</button>
+      </div>
+
+      <a id="resume-bar" class="resume-bar hidden" href="#/report"></a>
+
+      <section id="home-steps" class="home-steps">
+        <div>
+          <span class="step-num">01</span>
+          <p class="step-title">填一次产品资料</p>
+          <p class="step-desc">产品名、卖点、平台、站点、语言，一次填完</p>
+          <p class="step-desc">平台和站点分开选，不用懂术语</p>
+        </div>
+        <div>
+          <span class="step-num">02</span>
+          <p class="step-title">四段报告一起生成（约 30 秒）</p>
+          <p class="step-desc">洞察 → 文案 → 合规 → 质检</p>
+          <p class="step-desc">互相制约，不用盯</p>
+        </div>
+        <div>
+          <span class="step-num">03</span>
+          <p class="step-title">分段查看，逐段追问</p>
+          <p class="step-desc">左侧点哪一段，就看哪一段</p>
+          <p class="step-desc">红项逐条表态后导出</p>
+        </div>
+        <div>
+          <span class="step-num">04</span>
+          <p class="step-title">跨境小白也能懂</p>
+          <p class="step-desc">表单字段和名称都有注释</p>
+          <p class="step-desc">站点、平台、Listing 第一次出现就解释</p>
+        </div>
+      </section>
+
+      <section class="home-trust">
+        <p class="home-trust-title">为什么可以信</p>
+        <ul>
+          <li>四个角色互相制约——文案写完合规来挑，最后质检查它们三个有没有打架</li>
+          <li>每条风险都标依据和整改动作，没有依据的标「需人工核实」</li>
+          <li>AI 只给建议，不自动发布；红项必须逐条表态才能导出</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <!-- ═══ 自由问答：聆听您的声音（与四段无关） ═══ -->
+  <div id="view-ask" class="view">
+    <div class="ask-page-wrap">
+      <header class="page-head">
+        <p class="page-kicker">与四段报告无关的自由提问</p>
+        <h1>聆听您的声音</h1>
+        <p class="page-desc">认证、平台规则、跨境术语、物流、选品……想到什么就问什么，不需要先填产品资料。</p>
+      </header>
+      <div class="ask-examples">
+        <span>不会问？点一个例子：</span>
+        <button type="button" onclick="fillAskExample('CE 认证一定要做吗？')">CE 认证一定要做吗？</button>
+        <button type="button" onclick="fillAskExample('TikTok 美国站现在还能做吗？')">TikTok 美国站现在还能做吗？</button>
+        <button type="button" onclick="fillAskExample('跨境物流怎么选？')">跨境物流怎么选？</button>
+      </div>
+      <div id="ask-panel" class="ask-panel ask-page-panel">
+        <div class="ask-panel-head">
+          <span class="ask-panel-title">🧭 罗盘</span>
+          <span class="ask-page-hint">回答仅供参考，涉及法规和平台政策请人工核实</span>
+        </div>
+        <div class="ask-list-head">
+          <span>问答记录</span>
+          <button type="button" class="ask-clear" onclick="clearAskHistory()">清空</button>
+        </div>
+        <div id="ask-list" class="ask-list"></div>
+        <div class="ask-input-row">
+          <input id="ask-input" type="text" placeholder="例如：CE 认证一定要做吗？TikTok 美国站现在还能做吗？" onkeydown="if(event.key==='Enter'){event.preventDefault();submitAsk();}">
+          <button id="ask-btn" type="button" class="btn-primary h-11 px-5" onclick="submitAsk()"><span id="ask-btn-icon" class="inline-block">🧭</span> <span id="ask-btn-label">问罗盘</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 首页与出海报告共用侧栏：小海螺结构，罗盘文案与方块 ═══ -->
+  <aside id="sidebar">
+    <div class="side-inner">
+      <div class="side-brand">
+        <span class="side-brand-icon">🧭</span>
+        <span class="side-brand-text">
+          <strong>出海罗盘</strong>
+          <em>跨境出海 · 功能导航</em>
+        </span>
+      </div>
+      <p class="side-guide">↓ 点一项，直接开始</p>
+      <nav class="side-nav">
+        <a class="side-item" data-section="overview" href="#/report">
+          <span class="side-no">📋</span>
+          <span class="side-txt"><strong>出海报告</strong><small>一次生成四项报告</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+        <a class="side-item" data-section="insight" href="#/report/insight">
+          <span class="side-no">01</span>
+          <span class="side-txt"><strong>市场洞察</strong><small>市场判断/目标群体</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+        <a class="side-item" data-section="listing" href="#/report/listing">
+          <span class="side-no">02</span>
+          <span class="side-txt"><strong>写 Listing</strong><small>商品上架文案</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+        <a class="side-item" data-section="compliance" href="#/report/compliance">
+          <span class="side-no">03</span>
+          <span class="side-txt"><strong>合规体检</strong><small>上架前查风险</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+        <a class="side-item" data-section="quality" href="#/report/quality">
+          <span class="side-no">04</span>
+          <span class="side-txt"><strong>交叉质检</strong><small>检查报告矛盾</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+        <a class="side-item" data-section="translate" href="#/translate">
+          <span class="side-no">05</span>
+          <span class="side-txt"><strong>多语翻译</strong><small>上架文案 · 产品说明书 · 合同</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+        <a class="side-item" data-section="image" href="#/image">
+          <span class="side-no">06</span>
+          <span class="side-txt"><strong>智能生图</strong><small>商品主图 · 详情长图 · 场景图</small></span>
+          <span class="side-arrow">›</span>
+        </a>
+      </nav>
+      <div class="side-status">
+        <p class="side-status-title">生成状态</p>
+        <ul>
+          <li id="agent-1" class="text-slate-400">⏳ 市场洞察</li>
+          <li id="agent-2" class="text-slate-400">⏳ 上架文案（中文）</li>
+          <li id="agent-3" class="text-slate-400">⏳ 合规体检</li>
+          <li id="agent-4" class="text-slate-400">⏳ 交叉质检</li>
+          <li id="agent-translate" class="text-slate-400">⏳ 多语翻译</li>
+          <li id="agent-image" class="text-slate-400">⏳ 智能生图</li>
+        </ul>
+      </div>
+      <a class="voice-entry" href="#/ask">
+        <span class="voice-icon">🐚</span>
+        <span class="voice-text"><strong>聆听您的声音</strong><small>了解您的其他诉求</small></span>
+      </a>
+      <a class="help-entry" href="#/help">
+        <span class="help-icon">?</span>
+        <span class="help-text"><strong>跨境指引</strong><small>跨境名词注释</small></span>
+      </a>
+      <a class="glossary-entry" href="#/about">
+        <span class="glossary-icon">🧭</span>
+        <span class="glossary-text"><strong>罗盘介绍</strong><small>罗盘使用攻略</small></span>
+      </a>
+      <a class="settings-entry" href="#/settings">
+        <span class="settings-icon">⚙</span>
+        <span class="settings-text"><strong>设置</strong><small>模型配置</small></span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ═══ 报告主区（总览 + 四个分段页） ═══ -->
+  <main id="main" class="view">
+    <div class="report-container">
+
+      <div class="report-status">
+        <span id="slow-tip" class="hidden text-xs text-[#94A3B8]">生成较慢，请稍候</span>
+        <div id="demo-result-note" class="demo-result-note hidden">当前为演示数据：结果按你填写的信息组装，不是 AI 生成，仅用于接入模型前的功能测试。配置 API 后可获得真实答案。</div>
+        <div id="error-bar" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mt-4 flex items-center justify-between gap-3">
+          <span id="error-msg" class="text-sm"></span>
+          <button type="button" class="btn-primary shrink-0 h-10 px-4 text-sm" onclick="generateAll()">重试</button>
+        </div>
+      </div>
+
+      <!-- 总览：产品资料 + 四段入口 -->
+      <section id="panel-overview" class="report-page">
+        <header class="page-head">
+          <p class="page-kicker">填一次 · 四段一起生成</p>
+          <h1>出海四项报告</h1>
+          <p class="page-desc">平台是“在哪个渠道卖”，站点是“卖给哪个国家或地区”。两件事分开选，报告才不会泛泛而谈。</p>
+        </header>
+
+        <div class="overview-layout">
+          <section class="form-card">
+            <h2 class="card-title">产品资料</h2>
+
+            <div class="field-label-row">
+              <label class="form-label" for="product">产品名称 <span class="required">*</span></label>
+              <button type="button" class="field-img-box" onclick="pickFieldImage('product')" title="上传产品图，AI 自动判断是产品、卖点还是参数"><span class="field-img-plus">+ 选择图片</span><span class="field-img-hint">AI 自动识别</span></button>
+            </div>
+            <input id="product" type="text" value="" placeholder="例如：实木餐桌、蓝牙耳机、宠物饮水机" class="form-input">
+            <p class="form-help">写清是什么、有什么特点</p>
+
+            <div class="field-label-row">
+              <label class="form-label" for="selling-points">核心卖点</label>
+              <button type="button" class="field-img-box" onclick="pickFieldImage('selling_points')" title="上传别人的报告或说明文案图，AI 自动识别卖点"><span class="field-img-plus">+ 选择图片</span><span class="field-img-hint">AI 自动识别</span></button>
+            </div>
+            <textarea id="selling-points" rows="3" placeholder="例如：材质、功能、认证、使用场景（没有就留空）" class="form-textarea"></textarea>
+            <p class="form-help">突出差异化卖点，如材质、功能、认证</p>
+
+            <div class="field-label-row">
+              <label class="form-label" for="params">产品参数</label>
+              <button type="button" class="field-img-box" onclick="pickFieldImage('params')" title="上传参数表或规格图，AI 自动识别参数"><span class="field-img-plus">+ 选择图片</span><span class="field-img-hint">AI 自动识别</span></button>
+            </div>
+            <textarea id="params" rows="2" placeholder="例如：容量 500ml、高 22cm、重 280g" class="form-textarea"></textarea>
+            <p class="form-help">容量、尺寸、材质等关键参数</p>
+
+            <label class="form-label" for="category">产品种类 <span class="term term-q" data-tip="产品属于哪一类，影响平台规则、合规要求和文案风格">?</span></label>
+            <select id="category" class="form-select"></select>
+            <p class="form-help">拿不准就选「帮我推荐」</p>
+
+            <div class="form-split">
+              <div>
+                <label class="form-label" for="platform">目标平台 <span class="term term-q" data-tip="在哪个渠道卖，例如 Amazon、TikTok Shop、Shopee 或独立站">?</span></label>
+                <select id="platform" class="form-select"></select>
+                <p class="form-help">渠道，不写国家</p>
+              </div>
+              <div>
+                <label class="form-label" for="market">目标站点 / 市场 <span class="term term-q" data-tip="卖给哪个国家或地区，例如美国、德国、日本。站点属性是市场，不是平台">?</span></label>
+                <select id="market" class="form-select"></select>
+                <p class="form-help">国别或地区</p>
+              </div>
+            </div>
+
+            <p class="form-label">补充图片（可选） <span class="term term-q" data-tip="有产品图、包装图或参数图就传，AI 会自动判断并补充产品信息">?</span></p>
+            <div id="upload-zone" class="upload-zone image-drop-zone">
+              <div id="upload-empty">
+                <span class="image-plus">+ 选择图片</span>
+                <p class="image-hint">产品区 · 拖拽产品实物图，或点击选择；AI 自动识别产品、卖点、参数</p>
+                <p class="image-hint-sub">支持 JPG / PNG，不超过 20MB</p>
+              </div>
+              <div id="upload-filled" class="hidden">
+                <img id="image-preview" class="max-h-24 mx-auto rounded-lg" alt="产品图预览">
+                <p id="image-name" class="text-[13px] text-[#64748B] mt-1 truncate"></p>
+                <p id="upload-status" class="text-[13px] text-brand mt-1 hidden"></p>
+                <button type="button" class="text-sm text-brand mt-2 underline" onclick="event.stopPropagation(); resetUpload()">重新选择</button>
+              </div>
+              <p id="upload-fallback" class="hidden text-[13px] text-[#94A3B8] mt-2 mb-0">识图暂不可用，可手动填写</p>
+              <input id="image-input" type="file" accept="image/jpeg,image/png" class="hidden">
+            </div>
+
+            <div id="missing-notice" class="missing-notice hidden">
+              <p>⚠️ 还缺：<span id="missing-list"></span>。补齐后结果会准确很多，也可以先直接生成看看。</p>
+              <div class="missing-actions">
+                <button type="button" class="btn-secondary h-9 px-3 text-xs" onclick="fillMissingFields()">补充表单</button>
+                <button type="button" class="btn-primary h-9 px-3 text-xs" onclick="generateAnyway()">继续生成</button>
+              </div>
+            </div>
+
+            <button id="btn-generate" type="button" class="btn-primary generate-btn" onclick="generateAll()">
+              <span id="btn-icon" class="inline-block">🚀</span> <span id="btn-label">开始生成四项报告</span>
+            </button>
+          </section>
+
+        </div>
+      </section>
+
+      <!-- 第 1 段 · 市场洞察 -->
+      <section id="panel-insight" class="tab-panel report-page">
+        <header class="page-head section-head">
+          <p class="page-kicker">第 1 段 · 共 4 段</p>
+          <h1>市场洞察</h1>
+          <p class="page-desc">先看这个市场值不值得做、卖给谁、靠什么卖，再决定文案怎么写。</p>
+        </header>
+        <div id="insight-content" class="md-body result-card">
+          <p class="text-slate-400">还没有生成结果。回到「出海四项报告」填资料并生成后，这里只显示市场洞察。</p>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据来源及调用痕迹</summary><div id="tool-trace-insight" class="tool-trace"></div><pre id="evidence-insight" class="evidence-pre">（生成后显示原文）</pre></details>
+        <div class="result-actions"><button type="button" class="btn-primary h-12 px-6" onclick="openExportModal('insight','word')">导出</button><span class="revision-count" id="rev-count-insight">暂无历史版本</span><button type="button" class="revision-manage" onclick="openRevisionManager('insight')">查看/管理历史记录</button></div>
+        <div id="chat-insight" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-1">✏️ 对这一页有意见？说一句，我改 <span id="revision-insight" class="revision-badge"></span></p>
+          <p class="chat-hint">·「发送」= 只提问，报告内容不变</p>
+          <p class="chat-hint">·「改写本页」= 按你这句话直接改这一页，并重算质检</p>
+          <div class="chat-list"></div>
+          <div class="chat-actions">
+            <input type="text" placeholder="例如：人群写得太泛，按德国市场重写" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button type="button" class="btn-primary h-11 px-5 text-sm" onclick="sendChat('insight', this)">发送</button>
+            <button type="button" class="btn-secondary h-11 px-4 text-sm" onclick="reviseSection('insight', this)">✏️ 改写本页</button>
+          </div>
+        </div>
+        <section class="section-guide">
+          <h3>跨境指引 · 这一段里的名词</h3>
+          <dl>
+            <dt>市场洞察</dt><dd>先判断这个国家/地区的人买不买、为什么买，避免直接写文案却卖错人。</dd>
+            <dt>站点</dt><dd>你要卖到的国家或地区，例如美国、德国、日本；它不是平台，平台是 Amazon、TikTok Shop 这类渠道。</dd>
+          </dl>
+          <a href="#/help">查看完整跨境指引 →</a>
+        </section>
+      </section>
+
+      <!-- 第 2 段 · 上架文案（中文） -->
+      <section id="panel-listing" class="tab-panel report-page">
+        <header class="page-head section-head">
+          <p class="page-kicker">第 2 段 · 共 4 段</p>
+          <h1>上架文案（中文）</h1>
+          <p class="page-desc">先中文生成标题、五点、描述和关键词，方便你直接检查；需要外语去左侧 05 多语翻译。</p>
+        </header>
+
+        <section class="listing-image-card">
+          <div class="listing-image-head">
+            <div>
+              <p class="translation-kicker">Listing 区 · 补充信息</p>
+              <h3>补充图片不会清空已生成结果</h3>
+              <p>已经生成过也没关系：上传包装图 / 详情页图只会识别卖点和参数，并补进下方已生成结果；原内容保留。</p>
+            </div>
+          </div>
+          <div id="listing-upload-zone" class="upload-zone listing-upload-zone image-drop-zone">
+            <div id="listing-upload-empty">
+              <span class="image-plus">+ 选择图片</span>
+              <p class="image-hint">Listing 区 · 包装/详情页图，AI 自动识别卖点和关键词</p>
+              <p class="image-hint-sub">支持 JPG / PNG，不超过 20MB</p>
+            </div>
+            <div id="listing-upload-filled" class="hidden">
+              <img id="listing-image-preview" class="max-h-24 mx-auto rounded-lg" alt="Listing 参考图">
+              <p id="listing-image-name" class="text-[13px] text-[#64748B] mt-1 truncate"></p>
+              <p id="listing-image-status" class="text-[13px] text-brand mt-1 hidden"></p>
+              <button type="button" class="text-sm text-brand mt-2 underline" onclick="event.stopPropagation(); resetListingUpload()">重新选择</button>
+            </div>
+            <input id="listing-image-input" type="file" accept="image/jpeg,image/png" class="hidden">
+          </div>
+          <div id="listing-image-result" class="hidden"></div>
+          <div class="listing-result-status">
+            <p id="listing-supplement-note">生成结果会显示在下方；补充图片只补充信息，不会清空结果。</p>
+            <button type="button" class="listing-jump" onclick="scrollToListingResult()">↓ 点击查看下方已生成结果</button>
+          </div>
+          <p id="listing-image-fallback" class="hidden text-[13px] text-[#94A3B8] mt-2">识图暂不可用，可手动填写</p>
+        </section>
+
+        <div id="listing-content" class="md-body result-card">
+          <p class="text-slate-400">还没有生成结果。生成后这里只显示 Listing 文案。</p>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据来源及调用痕迹</summary><div id="tool-trace-listing" class="tool-trace"></div><pre id="evidence-listing" class="evidence-pre">（生成后显示原文）</pre></details>
+        <div class="result-actions"><button type="button" class="btn-primary h-12 px-6" onclick="openExportModal('listing','word')">导出</button><button type="button" class="btn-secondary h-12 px-5 text-sm" onclick="copyListingText()">📋 一键复制</button><span class="revision-count" id="rev-count-listing">暂无历史版本</span><button type="button" class="revision-manage" onclick="openRevisionManager('listing')">查看/管理历史记录</button></div>
+
+        <div id="chat-listing" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-1">✏️ 文案不满意？说一句，我改 <span id="revision-listing" class="revision-badge"></span></p>
+          <p class="chat-hint">·「发送」= 只提问，报告内容不变</p>
+          <p class="chat-hint">·「改写本页」= 按你这句话直接改这一页，并重算质检</p>
+          <div class="chat-list"></div>
+          <div class="chat-actions">
+            <input type="text" placeholder="例如：标题太长，控制在 80 字符内" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button type="button" class="btn-primary h-11 px-5 text-sm" onclick="sendChat('listing', this)">发送</button>
+            <button type="button" class="btn-secondary h-11 px-4 text-sm" onclick="reviseSection('listing', this)">✏️ 改写本页</button>
+          </div>
+        </div>
+        <section class="section-guide">
+          <h3>跨境指引 · 这一段里的名词</h3>
+          <dl>
+            <dt>Listing</dt><dd>商品详情页，包括标题、五点描述、详情和关键词。</dd>
+            <dt>五点描述</dt><dd>详情页最显眼的五条卖点，平台搜索和转化都看重它。</dd>
+            <dt>中文对照</dt><dd>每段外语文案后面都会给出中文意思，方便你核对，不用看懂外语也能判断内容对不对。</dd>
+          </dl>
+          <a href="#/help">查看完整跨境指引 →</a>
+        </section>
+      </section>
+
+      <!-- 第 3 段 · 合规体检 -->
+      <section id="panel-compliance" class="tab-panel report-page">
+        <header class="page-head section-head">
+          <p class="page-kicker">第 3 段 · 共 4 段</p>
+          <h1>合规体检</h1>
+          <p class="page-desc">上架前先看风险：红项必须处理，黄项建议处理，绿项可以放心。</p>
+        </header>
+        <div id="compliance-content">
+          <p class="text-slate-400">还没有生成结果。生成后这里只显示合规风险清单。</p>
+        </div>
+        <div class="review-card">
+          <label class="flex items-start gap-2"><input id="review-check" type="checkbox" class="mt-1" onchange="onReviewCheck()"><span>我已逐条复核上述风险项，确认可以交付</span></label>
+          <div class="flex flex-wrap items-center gap-3 mt-4">
+            <button id="btn-mark" type="button" class="btn-secondary h-12 px-6" disabled onclick="markReviewed()">标记为已审核</button>
+            <button id="btn-export-word-compliance" type="button" class="btn-primary h-12 px-6" disabled onclick="exportWord('compliance')">⬇️ 导出 Word</button>
+            <button id="btn-export-compliance" type="button" class="btn-ghost h-12 px-4 text-sm" disabled onclick="exportTab('compliance')">导出 .md</button>
+            <span id="red-pending-tip" class="red-pending-tip hidden"></span>
+          </div>
+          <p class="text-[13px] text-[#64748B] mt-3">合规建议由 AI 生成，导出前需人工复核确认——我们不做自动发布，只做可复核的建议。</p>
+        </div>
+        <div class="result-actions">
+          <span class="revision-count" id="rev-count-compliance">暂无历史版本</span>
+          <button type="button" class="revision-manage" onclick="openRevisionManager('compliance')">查看/管理历史记录</button>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据来源及调用痕迹</summary><div id="tool-trace-compliance" class="tool-trace"></div><pre id="evidence-compliance" class="evidence-pre">（生成后显示模型原文）</pre></details>
+        <div id="chat-compliance" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-1">💬 对这条判定有疑问？说一句，我复核</p>
+          <p class="chat-hint">·「发送」= 只提问，报告内容不变</p>
+          <div class="chat-list"></div>
+          <div class="chat-actions">
+            <input type="text" placeholder="例如：第二条为什么判红？" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button type="button" class="btn-primary h-11 px-5 text-sm" onclick="sendChat('compliance', this)">发送</button>
+          </div>
+        </div>
+        <section class="section-guide">
+          <h3>跨境指引 · 这一段里的名词</h3>
+          <dl>
+            <dt>红黄绿</dt><dd>红=必须处理，黄=建议处理，绿=可以放心。</dd>
+            <dt>需人工核实</dt><dd>AI 没把握的信息，需要你查证后再用。</dd>
+            <dt>处理状态</dt><dd>已整改=改了文案或补了材料；不适用=这条不适用你的情况；已确认=知道风险但决定不改。</dd>
+          </dl>
+          <a href="#/help">查看完整跨境指引 →</a>
+        </section>
+      </section>
+
+      <!-- 第 4 段 · 交叉质检 -->
+      <section id="panel-quality" class="tab-panel report-page">
+        <header class="page-head section-head">
+          <p class="page-kicker">第 4 段 · 共 4 段</p>
+          <h1>交叉质检</h1>
+          <p class="page-desc">最后一关：检查前三段有没有互相矛盾，挑出需要你人工确认的地方。</p>
+        </header>
+        <div id="quality-content" class="md-body result-card">
+          <p class="text-slate-400">还没有生成结果。生成后这里只显示交叉质检。</p>
+        </div>
+        <details class="evidence mt-4"><summary>📎 证据来源及调用痕迹</summary><div id="tool-trace-quality" class="tool-trace"></div><pre id="evidence-quality" class="evidence-pre">（生成后显示原文）</pre></details>
+        <div class="result-actions"><button type="button" class="btn-primary h-12 px-6" onclick="openExportModal('quality','word')">导出</button><span class="revision-count" id="rev-count-quality">暂无历史版本</span><button type="button" class="revision-manage" onclick="openRevisionManager('quality')">查看/管理历史记录</button></div>
+        <div id="chat-quality" class="chat-box mt-6">
+          <p class="text-sm font-semibold mb-1">🔁 质检结论有疑问？<span id="revision-quality" class="revision-badge"></span></p>
+          <p class="chat-hint">·「发送」= 只提问，报告内容不变</p>
+          <p class="chat-hint">·「重算质检」= 按当前前三段重新算一遍质检，不改前两段</p>
+          <div class="chat-list"></div>
+          <div class="chat-actions">
+            <input type="text" placeholder="例如：这条冲突判错了，重新看一眼" class="chat-input flex-1 h-11 px-3 rounded-lg border border-line focus:outline-none focus:border-brand">
+            <button type="button" class="btn-primary h-11 px-5 text-sm" onclick="sendChat('quality', this)">发送</button>
+            <button type="button" class="btn-secondary h-11 px-4 text-sm" onclick="recheckQuality(this)">🔁 重算质检</button>
+          </div>
+        </div>
+        <section class="section-guide">
+          <h3>跨境指引 · 这一段里的名词</h3>
+          <dl>
+            <dt>交叉质检</dt><dd>让第四个角色检查前三份报告有没有互相打架，例如文案写了“防水”，合规却说没有防水认证。</dd>
+            <dt>人工确认</dt><dd>质检只能指出疑点，最终要不要改、能不能上架，需要你确认。</dd>
+          </dl>
+          <a href="#/help">查看完整跨境指引 →</a>
+        </section>
+      </section>
+
+      <footer class="report-footer">请通过启动器窗口里显示的地址访问本页面，不要双击 html 文件直接打开。</footer>
+    </div>
+  </main>
+
+  <!-- ═══ 罗盘介绍：内容就是首页底下“为什么这份报告能落地” ═══ -->
+  <!-- ═══ 05 多语翻译：独立于四项，参考小海螺的材料类型 ═══ -->
+  <!-- ═══ 06 智能生图：独立于 02，标题和说明在框外 ═══ -->
+  <div id="view-image" class="view">
+    <div class="image-page-wrap">
+      <header class="page-head">
+        <p class="page-kicker">第 06 项 · 独立生图</p>
+        <h1>智能生图</h1>
+        <p class="page-desc">商品主图（方图）、商品详情介绍图（长图）、场景图都能生成；可上传参考图或模板图，再按描述生成。</p>
+      </header>
+      <p id="scene-unconfigured" class="scene-unconfigured hidden">生图未配置，可在设置里填写</p>
+      <div class="scene-card scene-studio scene-image-form">
+          <div class="scene-studio-grid">
+            <section class="scene-left">
+              <label class="form-label" for="scene-product">产品名称</label>
+              <input id="scene-product" class="form-input" placeholder="例如：实木餐桌、蓝牙耳机、宠物饮水机">
+              <label class="form-label" for="scene-kind">输出类型</label>
+              <select id="scene-kind" class="form-select">
+                <option value="main">商品主图（方图，平台首图）</option>
+                <option value="detail">商品详情介绍图（长图）</option>
+                <option value="detail_square">商品详情介绍图（方图）</option>
+                <option value="scene">场景图（方图）</option>
+                <option value="other">其他（自己描述）</option>
+              </select>
+              <input id="scene-kind-other" class="form-input select-other-input hidden" placeholder="选「其他」时，可自己描述图型，不填也行">
+              <label class="form-label" for="scene-count">生成几张类似的图？</label>
+              <input id="scene-count" type="number" min="1" max="6" value="1" class="form-input" placeholder="1-6 张">
+              <p class="form-help">一次最多 6 张；最多可保留 60 张；生成后可在右侧勾选、保存或删除</p>
+
+              <label class="form-label">场景风格（可选）</label>
+              <div class="scene-preset-row">
+                <button type="button" class="scene-btn active" data-scene="outdoor" disabled onclick="selectScene(this)">🌲 户外</button>
+                <button type="button" class="scene-btn" data-scene="home" disabled onclick="selectScene(this)">🏠 家居</button>
+                <button type="button" class="scene-btn" data-scene="gift" disabled onclick="selectScene(this)">🎁 礼品</button>
+              </div>
+
+              <label class="form-label" for="scene-desc">生图描述</label>
+              <textarea id="scene-desc" rows="5" class="form-textarea" placeholder="例如：白色或浅灰背景，产品居中，暖光，右侧留白放卖点；详情长图可分段展示材质、容量、使用场景。"></textarea>
+              <p class="form-help">描述越具体，生成的图越接近你要的商品图；详情长图会按纵向构图生成。</p>
+
+              <label class="form-label">上传参考图 / 模板图（可选）</label>
+              <div id="scene-ref-zone" class="upload-zone image-drop-zone scene-ref-zone">
+                <div id="scene-ref-empty">
+                  <span class="image-plus">+ 选择图片</span>
+                  <p class="image-hint">上传包装图、竞品参考图或模板图；AI 会结合描述生成</p>
+                </div>
+                <div id="scene-ref-filled" class="hidden">
+                  <img id="scene-ref-preview" alt="参考图预览">
+                  <button type="button" class="text-sm text-brand mt-2 underline" onclick="event.stopPropagation(); resetSceneReference()">重新选择</button>
+                </div>
+                <input id="scene-ref-input" type="file" accept="image/jpeg,image/png" class="hidden">
+              </div>
+
+              <div id="scene-missing-notice" class="missing-notice hidden">
+                <p>⚠️ 还缺：<span id="scene-missing-list">生图描述、参考图（都可选）</span>。补充后更容易生成接近你要的图，也可以先直接生成。</p>
+                <div class="missing-actions">
+                  <button type="button" class="btn-secondary h-9 px-3 text-xs" onclick="fillSceneMissing()">补充表单</button>
+                  <button type="button" class="btn-primary h-9 px-3 text-xs" onclick="sceneGenerateAnyway()">继续生成</button>
+                </div>
+              </div>
+              <p id="scene-status" class="text-[13px] text-brand hidden"></p>
+              <button id="btn-gen-image" type="button" class="btn-primary h-12 px-6 w-full mt-3" disabled onclick="generateSceneImage()"><span id="btn-gen-image-icon">🎨</span> <span id="btn-gen-image-label">生成图片</span></button>
+              <div id="scene-loading" class="scene-shimmer hidden"></div>
+              <div id="scene-error" class="hidden mt-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+                <span id="scene-error-msg" class="text-sm"></span>
+                <button type="button" class="btn-primary shrink-0 h-10 px-4 text-sm" onclick="generateSceneImage()">重试</button>
+              </div>
+            </section>
+            <section class="scene-right">
+              <p class="scene-preview-label">预览图片</p>
+              <p id="scene-demo-note" class="scene-demo-note hidden">🔧 演示图：本地合成，未调用生图模型</p>
+              <div id="scene-placeholder" class="scene-placeholder">
+                <span>🖼️</span>
+                <p>生成的商品图会显示在这里</p>
+                <small>方图用于平台首图，长图用于详情介绍</small>
+              </div>
+              <div id="scene-result" class="hidden">
+                <div class="scene-wrap">
+                  <img id="scene-img" class="scene-img" alt="产品商品图">
+                  <span id="scene-badge" class="ai-badge">AI 生成 · 需人工审核</span>
+                </div>
+                <div class="flex gap-3 mt-3">
+                  <button id="btn-download-image" type="button" class="btn-secondary h-11 px-6 text-sm" onclick="downloadSceneImage()">⬇️ 下载</button>
+                  <button id="btn-regen-image" type="button" class="btn-secondary h-11 px-6 text-sm" onclick="generateSceneImage()">重新生成</button>
+                </div>
+              </div>
+              <div id="scene-history" class="scene-history hidden">
+                <div class="scene-history-head">
+                  <p class="scene-history-title">生成过的图片（勾选可批量处理）</p>
+                  <div class="scene-history-tools">
+                    <button type="button" onclick="toggleSelectAllSceneHistory()">全选/取消</button>
+                    <button type="button" onclick="saveSelectedSceneImages()">保存选中</button>
+                    <button type="button" onclick="deleteSelectedSceneImages()">删除选中</button>
+                  </div>
+                </div>
+                <div id="scene-history-list" class="scene-history-list"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+            </div>
+  </div>
+
+  <div id="view-translate" class="view">
+    <div class="translate-wrap">
+      <header class="page-head">
+        <p class="page-kicker">第 05 项 · 独立翻译</p>
+        <h1>多语翻译</h1>
+        <p class="page-desc">说明书、商品上架文案、合同，选材料类型，翻译成目标语言。型号、参数、单位、认证编号原样保留，数字不会改。</p>
+      </header>
+      <section class="translate-card">
+        <div class="form-split">
+          <div>
+            <label class="form-label" for="translate-doc-type">要翻的是什么材料？</label>
+            <select id="translate-doc-type" class="form-select">
+              <option>产品说明书</option>
+              <option selected>商品上架文案</option>
+              <option>商务合同</option>
+              <option>包装标签</option>
+              <option>其他</option>
+            </select>
+            <input id="translate-doc-type-other" class="form-input select-other-input hidden" placeholder="选「其他」时，可自己填材料类型，不填也行">
+            <p class="form-help">材料不同，写法不一样：说明书步骤清楚，合同条款严谨，上架文案要能卖货</p>
+          </div>
+          <div>
+            <label class="form-label">翻成哪些语言？</label>
+            <div id="translate-lang-group" class="lang-group"></div>
+            <p class="form-help">最多选 3 种，结果每种语言一节，并附中文对照</p>
+          </div>
+        </div>
+        <div class="field-label-row">
+          <label class="form-label" for="translate-source">原文 <span class="required">*</span></label>
+          <button type="button" class="field-img-box" onclick="pickFieldImage('translation')" title="上传说明书、合同、包装标签或文案截图，AI 自动识别原文"><span class="field-img-plus">+ 选择图片</span><span class="field-img-hint">AI 自动识别</span></button>
+        </div>
+        <textarea id="translate-source" rows="10" class="form-textarea" placeholder="把说明书、上架文案或合同原文贴进来。型号、参数、认证编号一起贴上，方便原样保留。"></textarea>
+        <label class="form-label" for="translate-terms">有没有指定术语或写法？</label>
+        <input id="translate-terms" class="form-input" placeholder="例如：品牌名统一写 SAILCOMPASS，不要翻译公司名">
+        <div id="translate-missing-notice" class="missing-notice hidden">
+          <p>⚠️ 还缺：<span id="translate-missing-list">术语要求（可选）</span>。补充后翻译更准确，也可以先直接翻译。</p>
+          <div class="missing-actions">
+            <button type="button" class="btn-secondary h-9 px-3 text-xs" onclick="fillTranslateMissing()">补充表单</button>
+            <button type="button" class="btn-primary h-9 px-3 text-xs" onclick="translateAnyway()">继续翻译</button>
+          </div>
+        </div>
+        <div class="translate-actions">
+          <button id="btn-translate" type="button" class="btn-primary h-12 px-6" onclick="runTranslate()"><span id="translate-btn-icon">🌐</span> <span id="translate-btn-label">开始翻译</span></button>
+          <button type="button" class="btn-ghost h-12 px-4 text-sm" onclick="copyTranslateResult()">复制全文</button>
+          <button type="button" class="btn-ghost h-12 px-4 text-sm" onclick="exportTranslate()">导出</button>
+        </div>
+        <p id="translate-status" class="hidden text-[13px] text-brand mt-3"></p>
+        <div id="translate-result" class="md-body result-card hidden"></div>
+      </section>
+    </div>
+  </div>
+
+  <section id="view-about" class="view">
+    <div class="home-wrap about-wrap">
+      <header class="page-head">
+        <p class="page-kicker">关于出海罗盘</p>
+        <h1>罗盘介绍</h1>
+        <p class="page-desc">上架前最费时间的几件事，一个工具办完。工厂、外贸公司、跨境卖家都能用，不限地区。</p>
+      </header>
+
+      <section class="about-features">
+        <h2>罗盘怎么用</h2>
+        <p class="about-features-sub">填一次资料，生成四项报告，分段查看；第一次做跨境也能看懂。</p>
+        <div class="about-feature-grid">
+          <article class="about-feature"><span class="about-feature-no">01</span><h3>填一次产品资料</h3><p>产品名、卖点、参数、平台、站点、语言一次填完；平台和站点分开选。</p></article>
+          <article class="about-feature"><span class="about-feature-no">02</span><h3>生成四项报告</h3><p>市场洞察、中文上架文案、合规体检、交叉质检，四个角色互相检查。</p></article>
+          <article class="about-feature"><span class="about-feature-no">03</span><h3>分段查看、逐段追问</h3><p>左侧点哪段就看哪段；红项逐条表态后才能导出交付。</p></article>
+          <article class="about-feature"><span class="about-feature-no">04</span><h3>跨境小白也能懂</h3><p>表单字段和名称都有注释，站点、平台、Listing 第一次出现就解释，不用先学跨境术语。</p></article>
+        </div>
+      </section>
+
+      <section class="about-extra">
+        <h2>功能指引</h2>
+        <div class="about-extra-grid">
+          <article class="about-extra-card"><span class="about-extra-icon">🛡️</span><h3>03 · 合规体检</h3><p>把风险项做成代办清单：红黄绿分级，逐条标记已整改 / 不适用 / 已确认；红项处理完才能导出。</p></article>
+          <article class="about-extra-card"><span class="about-extra-icon">🌐</span><h3>05 · 多语翻译</h3><p>说明书、上架文案、合同都能翻，16 种语言，带中文对照，型号和认证编号原样保留。</p></article>
+          <article class="about-extra-card"><span class="about-extra-icon">🎨</span><h3>06 · 智能生图</h3><p>商品主图（方图）、商品详情介绍图（长图/方图）、场景图都能生成；可上传参考图或模板图，再按描述生成。</p></article>
+          <article class="about-extra-card"><span class="about-extra-icon">📷</span><h3>智能识图</h3><p>产品图、包装图、参数表或说明书图，AI 自动判断是产品、卖点还是翻译材料，再填入对应位置。</p></article>
+          <article class="about-extra-card"><span class="about-extra-icon">🐚</span><h3>聆听诉求</h3><p>去「聆听您的声音」直接问认证、平台规则、物流、选品，不用先填产品资料。</p></article>
+          <article class="about-extra-card"><span class="about-extra-icon">?</span><h3>跨境指引</h3><p>站点、平台、Listing、CE、FBA 这些词第一次出现就解释，跨境小白不用先背术语。</p></article>
+        </div>
+      </section>
+
+      <section class="home-trust about-trust">
+        <p class="home-trust-title">为什么这份报告能落地</p>
+        <ul>
+          <li>四个角色互相制约：文案写完合规来挑，最后质检查它们有没有打架</li>
+          <li>每条风险都标依据和整改动作，没有依据的明确标「需人工核实」</li>
+          <li>AI 只给建议，不自动发布；红项逐条表态后才能导出交付</li>
+        </ul>
+      </section>
+      <div class="about-grid">
+        <div class="about-card"><strong>适合谁</strong><p>第一次做跨境的老板、工厂型卖家、刚接手海外店运营的新手。</p></div>
+        <div class="about-card"><strong>怎么用</strong><p>填一次产品资料，生成四项报告，左侧点哪段就看哪段。</p></div>
+        <div class="about-card"><strong>不做什么</strong><p>不自动发布、不替你决策；认证和法规必须人工复核。</p></div>
+      </div>
+      <a class="about-settings" href="#/settings">⚙ 模型设置 · 配置文本 / 识图 / 生图模型 →</a>
+    </div>
+  </section>
+
+  <section id="view-help" class="view"></section>
+  <section id="view-settings" class="view"></section>
+</body>
+</html>

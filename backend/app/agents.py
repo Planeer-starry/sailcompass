@@ -1,0 +1,373 @@
+"""出海罗盘 · Agent 模块（3B：四个 Agent 全部实现 + 阶段 4 识图）"""
+import base64
+import json
+import os
+from typing import Optional
+
+from openai import OpenAI
+
+from . import task_manager
+from .config import APP_DIR
+
+# 提示词目录：backend/app/prompts/
+PROMPT_DIR = APP_DIR / "prompts"
+
+# OpenAI 客户端惰性单例：首次调用时才创建，保证 /api/health 不依赖 .env 也能用
+_client = None
+
+
+def _get_client(cfg=None) -> OpenAI:
+    """获取 OpenAI 客户端：cfg 有值用临时 client，不写全局；cfg=None 沿用原单例"""
+    global _client
+    if cfg and cfg.get("base_url") and cfg.get("api_key"):
+        return OpenAI(
+            base_url=cfg["base_url"],
+            api_key=cfg["api_key"],
+            timeout=180,
+            max_retries=1,
+        )
+    if _client is None:
+        base_url = os.getenv("API_BASE_URL")
+        api_key = os.getenv("API_KEY")
+        if not base_url or not api_key:
+            raise RuntimeError("缺少 API_BASE_URL 或 API_KEY，请检查 .env 文件")
+        # 超时与重试按已定决策：180 秒、重试 1 次
+        _client = OpenAI(base_url=base_url, api_key=api_key, timeout=180, max_retries=1)
+    return _client
+
+
+def call_llm(system: str, user: str, temperature: float = 0.3, cfg=None) -> str:
+    """两条消息的便捷封装（四段流水线用）"""
+    return call_llm_messages(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature,
+        cfg=cfg,
+    )
+
+
+def call_llm_messages(messages: list, temperature: float = 0.3, cfg=None) -> str:
+    """底层：完整 messages 列表调用大模型；异常原样抛出，由路由层转为错误响应"""
+    model = (cfg or {}).get("text_model") or os.getenv("MODEL")
+    if not model:
+        raise RuntimeError("缺少 MODEL，请检查 .env 文件")
+    resp = _get_client(cfg).chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+    )
+    text = resp.choices[0].message.content
+    if not text or not text.strip():
+        raise RuntimeError("模型返回了空内容，请重试")
+    return text.strip()
+
+
+def load_prompt(name: str) -> str:
+    """读取 prompts/ 目录下的提示词文件（如 insight.md）"""
+    path = PROMPT_DIR / f"{name}.md"
+    if not path.exists():
+        raise FileNotFoundError(f"提示词文件不存在：{path}")
+    return path.read_text(encoding="utf-8")
+
+
+def build_info_text(info: dict) -> str:
+    """把六字段产品信息拼成给模型的文本；空字段标注'未提供'，不猜测"""
+    languages = info.get("languages") or []
+    if isinstance(languages, list):
+        languages_text = "、".join(languages)
+    else:
+        languages_text = str(languages)
+    fields = [
+        ("产品名称", info.get("product", "")),
+        ("核心卖点", info.get("selling_points", "")),
+        ("产品参数", info.get("params", "")),
+        ("产品类目", info.get("category", "")),
+        ("目标平台", info.get("platform", "")),
+        ("目标站点/市场（国别或地区）", info.get("market", "")),
+        ("目标语言", languages_text),
+    ]
+    lines = []
+    for label, value in fields:
+        value = (value or "").strip() if isinstance(value, str) else str(value)
+        lines.append(f"{label}：{value if value else '未提供'}")
+    return "\n".join(lines)
+
+
+# ---------- Agent 1 · 市场洞察 ----------
+def market_insight(info: dict, cfg=None) -> str:
+    """输入产品信息，输出六小节洞察文本"""
+    system = load_prompt("insight")
+    user = build_info_text(info)
+    return call_llm(system, user, cfg=cfg)
+
+
+# ---------- Agent 2 · 上架文案（中文） ----------
+def localize_listing(info: dict, insight: str, cfg=None) -> str:
+    """根据产品信息与市场洞察，为每种目标语言生成 Listing 文案"""
+    system = load_prompt("listing")
+    user = build_info_text(info) + "\n\n===== 市场洞察 =====\n" + insight
+    return call_llm(system, user, cfg=cfg)
+
+
+# ---------- Agent 3 · 合规体检 ----------
+def compliance_check(info: dict, listing: str, cfg=None, word_result=None) -> tuple[list, str]:
+    """对产品与 Listing 做合规体检，返回 (rows, raw)；JSON 解析失败不抛异常"""
+    system = load_prompt("compliance")
+    user = build_info_text(info) + "\n\n===== Listing 文案 =====\n" + listing
+    if word_result:
+        user += "\n\n===== 违禁词库命中（工具）=====\n" + json.dumps(word_result, ensure_ascii=False)
+        user += "\n请逐条确认命中词是否真的违规并给改法；不要因为命中就一律判红。"
+    raw = call_llm(system, user, cfg=cfg)
+    rows = _parse_compliance_rows(raw)
+    return rows, raw
+
+
+def _strip_code_fence(text: str) -> str:
+    """去掉 ``` 包裹（```json ... ``` 或 ``` ... ```）"""
+    text = text.strip()
+    if not text.startswith("```"):
+        return text
+    lines = text.split("\n")
+    if len(lines) >= 2 and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1])
+    return "\n".join(lines[1:])
+
+
+def _extract_brackets(text: str) -> str:
+    """截取首个 [ 到最后一个 ] 之间的内容（应对模型输出前后带说明文字）"""
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        return ""
+    return text[start:end + 1]
+
+
+def _fix_row(row: dict) -> dict:
+    """逐条修补：risk_level 缺/非法→黄，need_verify 缺/非法→是，其余缺→空串；条目一律保留"""
+    level = str(row.get("risk_level", "")).strip()
+    if level not in ("红", "黄", "绿"):
+        level = "黄"
+    verify = str(row.get("need_verify", "")).strip()
+    if verify not in ("是", "否"):
+        verify = "是"
+    return {
+        "item": str(row.get("item", "")).strip(),
+        "risk_level": level,
+        "basis": str(row.get("basis", "")).strip(),
+        "action": str(row.get("action", "")).strip(),
+        "need_verify": verify,
+    }
+
+
+def _parse_compliance_rows(raw: str) -> list:
+    """JSON 四级容错：直解析 → 去``` → 截取[] → 单对象包列表；全失败返回 []，不抛异常"""
+    candidates = [raw.strip(), _strip_code_fence(raw), _extract_brackets(raw)]
+    for text in candidates:
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(data, list):
+            return [_fix_row(r) for r in data if isinstance(r, dict)]
+        if isinstance(data, dict):
+            return [_fix_row(data)]
+    return []
+
+
+# ---------- Agent 4 · 交叉质检 ----------
+def quality_check(info: dict, insight: str, listing: str, rows: list, cfg=None) -> str:
+    """独立交叉审核：核对前三份结果的一致性；temperature=0.2 求稳"""
+    system = load_prompt("quality")
+    user = (
+        build_info_text(info)
+        + "\n\n===== 市场洞察 =====\n" + insight
+        + "\n\n===== Listing 文案 =====\n" + listing
+        + "\n\n===== 合规体检（摘要）=====\n" + _format_rows_brief(rows)
+    )
+    return call_llm(system, user, temperature=0.2, cfg=cfg)
+
+
+def _format_rows_brief(rows: list) -> str:
+    """合规行摘要：只给 item + risk_level，末尾附红项 action 原文（质检要判断红项是否有可执行改法）"""
+    if not rows:
+        return "合规结果为空或解析失败，无法交叉校验风险项；请在结论中说明此项未能校验"
+    lines = []
+    for r in rows:
+        lines.append("- " + str(r.get("item", "")) + "｜" + str(r.get("risk_level", "")))
+    red_actions = [str(r.get("action", "")).strip() for r in rows
+                   if r.get("risk_level") == "红" and str(r.get("action", "")).strip()]
+    if red_actions:
+        lines.append("")
+        lines.append("红项整改建议原文：")
+        for a in red_actions:
+            lines.append("- " + a)
+    return "\n".join(lines)
+
+# ---------- 协商改写 ----------
+def revise_section(section: str, current: str, instruction: str, info: dict, cfg=None) -> str:
+    """只改当前一段；保持 Markdown 结构，不改事实与数字"""
+    system = load_prompt("revision")
+    user = build_info_text(info) + f"\n\n===== 当前段落（{section}）=====\n" + current + "\n\n===== 修改要求 =====\n" + instruction
+    return call_llm(system, user, temperature=0.3, cfg=cfg)
+
+
+# ---------- 小海螺 · 追问助手 ----------
+CHAT_SYSTEM_PROMPT = (
+    "你是出海罗盘的助手小海螺，基于给定的报告内容回答用户追问，"
+    "只依据报告内容回答，不知道就说不知道，不要编造。"
+    "回答用简体中文，简洁直接，必要时引用报告原文。"
+)
+
+
+def answer_question(task_id: str, tab: str, context: str, question: str, cfg=None) -> str:
+    """小海螺：基于当前页报告内容回答追问；多轮历史存内存，每个 task_id+tab 最多保留最近 10 轮"""
+    system = CHAT_SYSTEM_PROMPT + "\n\n===== 当前页面报告内容 =====\n" + context
+    messages = [{"role": "system", "content": system}]
+    messages += task_manager.get_chat_history(task_id, tab)
+    messages.append({"role": "user", "content": question})
+    answer = call_llm_messages(messages, temperature=0.3, cfg=cfg)
+    task_manager.append_chat(task_id, tab, question, answer)
+    return answer
+
+# ---------- 小海螺 · 首页自由问答（独立于 Tab 追问：无需任务/报告，纯常识问答） ----------
+def ask_conch(question: str, history: list, cfg=None) -> str:
+    """首页自由问答：无报告上下文，history 为前端带来的最近对话（已由路由层截到 6 条）"""
+    messages = [{"role": "system", "content": load_prompt("ask")}]
+    messages += [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": question})
+    return call_llm_messages(messages, temperature=0.3, cfg=cfg)
+
+# ---------- 05 多语翻译 ----------
+def translate_text(text: str, doc_type: str, languages: list, terms: str = "", cfg=None) -> str:
+    """把说明书/上架文案/合同翻译成目标语言；每种语言附中文对照，保留参数与编号"""
+    system = load_prompt("translate")
+    lang_text = "、".join(languages) if languages else "未指定"
+    user = (
+        f"材料类型：{doc_type}\n"
+        f"目标语言：{lang_text}\n"
+        f"术语要求：{terms or '无'}\n\n"
+        f"原文：\n{text}"
+    )
+    return call_llm(system, user, temperature=0.2, cfg=cfg)
+
+
+# ---------- 阶段 4 · 产品图识别 ----------
+# vision 客户端惰性单例：与文本客户端分开（BASE_URL / KEY / MODEL 三项独立配置）
+_vision_client = None
+
+
+def vision_configured() -> bool:
+    """识图是否可用：VISION_* 三项任一缺失即视为未配置"""
+    return bool(os.getenv("VISION_BASE_URL") and os.getenv("VISION_API_KEY") and os.getenv("VISION_MODEL"))
+
+
+def _get_vision_client(cfg=None) -> OpenAI:
+    """获取 vision 客户端：cfg 有专用地址/密钥时用临时 client；否则沿用原单例"""
+    global _vision_client
+    if cfg and cfg.get("vision_base_url") and cfg.get("vision_api_key"):
+        return OpenAI(
+            base_url=cfg["vision_base_url"],
+            api_key=cfg["vision_api_key"],
+            timeout=180,
+            max_retries=1,
+        )
+    if _vision_client is None:
+        if not vision_configured():
+            raise RuntimeError("识图未配置")
+        _vision_client = OpenAI(
+            base_url=os.getenv("VISION_BASE_URL"),
+            api_key=os.getenv("VISION_API_KEY"),
+            timeout=180,
+            max_retries=1,
+        )
+    return _vision_client
+
+
+def _build_image_messages(image_b64: str, mime: str) -> list:
+    """OpenAI 兼容 vision 格式：content 数组 = 文本指令 + data URL 图片"""
+    data_url = f"data:{mime};base64,{image_b64}"
+    return [
+        {"role": "system", "content": load_prompt("image")},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "请识别这张产品图，只返回 JSON。"},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ],
+        },
+    ]
+
+
+def _extract_braces(text: str) -> str:
+    """截取首个 { 到最后一个 } 之间的内容（应对模型输出前后带说明文字）"""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return ""
+    return text[start:end + 1]
+
+
+def _normalize_image_result(data: dict) -> dict:
+    """识图结果规整：保证五个键齐全、类型正确；字段为空即视为推测，不编数据"""
+    if data.get("error"):
+        return {"error": str(data["error"]).strip()}
+    points = data.get("selling_points")
+    if not isinstance(points, list):
+        points = [str(p).strip() for p in points] if points else []
+    params = data.get("params") if isinstance(data.get("params"), dict) else {}
+    uncertain = data.get("uncertain")
+    if not isinstance(uncertain, list):
+        uncertain = [str(u).strip() for u in uncertain] if uncertain else []
+    image_type = str(data.get("image_type", "")).strip()
+    if image_type not in ("product", "selling_points", "params", "translation"):
+        image_type = "product"
+    return {
+        "image_type": image_type,
+        "product": str(data.get("product", "")).strip(),
+        "category": str(data.get("category", "")).strip(),
+        "selling_points": [str(p).strip() for p in points if str(p).strip()],
+        "params": {str(k).strip(): str(v).strip() for k, v in params.items()},
+        "source_text": str(data.get("source_text", "")).strip(),
+        "uncertain": [str(u).strip() for u in uncertain if str(u).strip()],
+    }
+
+
+def analyze_product_image(image_bytes: bytes, mime: str, cfg=None) -> dict:
+    """识图主入口：调 vision 模型识别产品图；解析失败返回 {"error": ...}，不抛 500"""
+    if cfg:
+        ready = bool(cfg.get("vision_base_url") and cfg.get("vision_api_key") and cfg.get("vision_model"))
+    else:
+        ready = vision_configured()
+    if not ready:
+        # 路由层会转成 400 + 中文提示；此处抛出保证函数单独被调用时也有明确信号
+        raise RuntimeError("识图未配置")
+    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    messages = _build_image_messages(image_b64, mime)
+    model = (cfg or {}).get("vision_model") or os.getenv("VISION_MODEL")
+    resp = _get_vision_client(cfg).chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.1,
+    )
+    raw = resp.choices[0].message.content
+    if not raw or not raw.strip():
+        return {"error": "识图模型返回空内容，请重试"}
+    data = _parse_image_json(raw)
+    if data is None:
+        return {"error": "识图结果解析失败，请重试"}
+    return _normalize_image_result(data)
+
+
+def _parse_image_json(raw: str) -> Optional[dict]:
+    """JSON 四级容错：直解析 → 去``` → 截取{}；全失败返回 None"""
+    candidates = [raw.strip(), _strip_code_fence(raw), _extract_braces(raw)]
+    for text in candidates:
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return None

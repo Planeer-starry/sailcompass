@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "platforms": {
+    "Amazon": {
+      "banned": ["cure", "treat", "FDA approved", "best seller", "guaranteed", "100% safe", "non-toxic", "eco-friendly", "medical grade", "clinically proven", "antibacterial", "waterproof", "food grade", "no side effects", "doctor recommended", "permanent", "miracle", "instant results", "kill germs", "prevents disease", "FDA registered", "CE certified", "BPA free", "hypoallergenic"],
+      "risky": ["natural", "pure", "premium", "best", "No.1", "top rated", "safe", "healthy", "green", "sustainable"]
+    },
+    "TikTok Shop": {
+      "banned": ["cure", "treat", "guaranteed", "100% safe", "FDA approved", "best seller", "miracle", "instant results", "no side effects", "medical grade", "clinically proven", "permanent"],
+      "risky": ["best", "premium", "natural", "safe", "viral", "must-have"]
+    },
+    "Shopee": {
+      "banned": ["cure", "treat", "guaranteed", "100% safe", "FDA approved", "best seller", "miracle", "no side effects", "medical grade", "permanent"],
+      "risky": ["best", "premium", "natural", "safe", "cheap"]
+    },
+    "Temu": {
+      "banned": ["cure", "treat", "FDA approved", "guaranteed", "100% safe", "medical grade", "clinically proven", "permanent"],
+      "risky": ["best", "premium", "natural", "safe"]
+    },
+    "AliExpress": {
+      "banned": ["cure", "treat", "FDA approved", "guaranteed", "100% safe", "medical grade", "clinically proven", "permanent"],
+      "risky": ["best", "premium", "natural", "safe"]
+    },
+    "eBay": {
+      "banned": ["cure", "treat", "FDA approved", "guaranteed", "100% safe", "medical grade"],
+      "risky": ["best", "premium", "natural", "safe"]
+    },
+    "Walmart": {
+      "banned": ["cure", "treat", "FDA approved", "best seller", "guaranteed", "100% safe", "medical grade", "clinically proven", "permanent"],
+      "risky": ["best", "premium", "natural", "safe", "healthy"]
+    },
+    "Lazada": {
+      "banned": ["cure", "treat", "guaranteed", "100% safe", "FDA approved", "medical grade", "permanent"],
+      "risky": ["best", "premium", "natural", "safe"]
+    },
+    "Mercado Libre": {
+      "banned": ["cure", "treat", "guaranteed", "100% safe", "FDA approved", "medical grade", "permanent"],
+      "risky": ["best", "premium", "natural", "safe"]
+    },
+    "独立站": {
+      "banned": ["cure", "treat", "FDA approved", "guaranteed", "100% safe", "medical grade", "clinically proven", "permanent"],
+      "risky": ["best", "premium", "natural", "safe", "No.1"]
+    },
+    "其他": {
+      "banned": ["cure", "treat", "FDA approved", "guaranteed", "100% safe", "medical grade", "permanent"],
+      "risky": ["best", "premium", "natural", "safe"]
+    }
+  },
+  "certifications": {
+    "美国": {
+      "3C电子": ["FCC", "UL", "电池运输"],
+      "家具家居": ["CARB", "FSC"],
+      "母婴玩具": ["CPC", "ASTM F963"],
+      "医疗器械": ["FDA 510(k)"],
+      "食品饮料": ["FDA", "食品接触材料"],
+      "default": ["FDA", "FCC", "UL"]
+    },
+    "德国": {
+      "3C电子": ["CE", "RoHS", "WEEE"],
+      "家具家居": ["CE", "REACH", "FSC"],
+      "母婴玩具": ["CE", "EN71"],
+      "医疗器械": ["CE MDR"],
+      "食品饮料": ["LFGB", "CE"],
+      "default": ["CE", "REACH", "LFGB"]
+    },
+    "英国": {
+      "3C电子": ["UKCA", "RoHS"],
+      "家具家居": ["UKCA", "REACH"],
+      "母婴玩具": ["UKCA", "EN71"],
+      "医疗器械": ["UKCA", "MHRA"],
+      "default": ["UKCA"]
+    },
+    "法国": { "default": ["CE", "REACH"] },
+    "意大利": { "default": ["CE", "REACH"] },
+    "西班牙": { "default": ["CE", "REACH"] },
+    "荷兰": { "default": ["CE", "REACH"] },
+    "日本": {
+      "3C电子": ["PSE", "TELEC"],
+      "家具家居": ["JAS", "PSE"],
+      "母婴玩具": ["ST"],
+      "医疗器械": ["PMDA"],
+      "default": ["PSE", "TELEC"]
+    },
+    "韩国": { "default": ["KC"] },
+    "加拿大": { "default": ["ISED", "CSA"] },
+    "澳大利亚": { "default": ["RCM"] },
+    "沙特阿拉伯": { "default": ["SASO", "SABER"] },
+    "阿联酋": { "default": ["ESMA", "ECAS"] },
+    "巴西": { "default": ["ANATEL", "INMETRO"] },
+    "墨西哥": { "default": ["NOM"] },
+    "全球市场": { "default": ["按目标国确认"] }
+  },
+  "category_risks": {
+    "3C电子": ["电池运输", "无线认证", "电压标识"],
+    "家具家居": ["甲醛释放", "承重标注", "木材检疫"],
+    "服装鞋帽": ["纤维成分", "阻燃要求", "偶氮染料"],
+    "母婴玩具": ["CPC 认证", "小零件", "邻苯二甲酸盐"],
+    "医疗器械": ["FDA 510(k)/CE MDR", "临床证据", "标签与说明书"],
+    "食品饮料": ["食品接触材料", "保质期标签", "成分标注"]
+  }
+}
